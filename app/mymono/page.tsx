@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 
 export default function MyMonoPage() {
-  const [isMuted, setIsMuted] = useState(true)
+  const [isMuted, setIsMuted] = useState(false)
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const router = useRouter()
 
   useEffect(() => {
-    const audioElement = new Audio("/information.mp3")
+    const audioElement = new Audio("/mymono.mp3")
     audioElement.loop = true
     setAudio(audioElement)
 

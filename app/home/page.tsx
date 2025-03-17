@@ -211,7 +211,13 @@ export default function HomePage() {
                 <div className="relative w-20 h-20 sm:w-28 sm:h-28 cursor-pointer">
                   <div className="absolute inset-0 bg-purple-500 bg-opacity-20 animate-pulse rounded-lg"></div>
                   <div className="absolute inset-0 border-2 border-yellow-500 rounded-lg"></div>
-                  <Image src="/information.webp" alt="案内所" fill className="object-contain p-1" />
+                  <Image
+                    src="/information.webp"
+                    alt="案内所"
+                    width={80}
+                    height={80}
+                    className="w-full h-auto object-cover"
+                  />
                 </div>
                 <div className="rpg-nameplate mt-1 bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900">
                   <p className="text-white text-center text-xs sm:text-sm">案内所</p>
@@ -226,7 +232,13 @@ export default function HomePage() {
                 <div className="relative w-16 h-16 sm:w-24 sm:h-24 cursor-pointer">
                   <div className="absolute inset-0 bg-purple-500 bg-opacity-20 animate-pulse rounded-lg"></div>
                   <div className="absolute inset-0 border-2 border-yellow-500 rounded-lg"></div>
-                  <Image src="/mymono.webp" alt="金の蔵" fill className="object-contain p-1" />
+                  <Image
+                    src="/mymono.webp"
+                    alt="金の蔵"
+                    width={80}
+                    height={80}
+                    className="w-full h-auto object-cover"
+                  />
                 </div>
                 <div className="rpg-nameplate mt-1 bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900">
                   <p className="text-white text-center text-xs sm:text-sm">金の蔵</p>
@@ -241,7 +253,13 @@ export default function HomePage() {
                 <div className="relative w-24 h-24 sm:w-32 sm:h-32 cursor-pointer">
                   <div className="absolute inset-0 bg-purple-500 bg-opacity-20 animate-pulse rounded-lg"></div>
                   <div className="absolute inset-0 border-2 border-yellow-500 rounded-lg"></div>
-                  <Image src="/kingdom.webp" alt="クローゼット王国" fill className="object-contain p-1" />
+                  <Image
+                    src="/kingdom.webp"
+                    alt="クローゼット王国"
+                    width={80}
+                    height={80}
+                    className="w-full h-auto object-cover"
+                  />
                 </div>
                 <div className="rpg-nameplate mt-1 bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900">
                   <p className="text-white text-center text-xs sm:text-sm">クローゼット王国</p>
@@ -256,7 +274,13 @@ export default function HomePage() {
                 <div className="relative w-20 h-20 sm:w-28 sm:h-28 cursor-pointer">
                   <div className="absolute inset-0 bg-purple-500 bg-opacity-20 animate-pulse rounded-lg"></div>
                   <div className="absolute inset-0 border-2 border-yellow-500 rounded-lg"></div>
-                  <Image src="/pub.webp" alt="酒場" fill className="object-contain p-1" />
+                  <Image
+                    src="/pub.webp"
+                    alt="酒場"
+                    width={80}
+                    height={80}
+                    className="w-full h-auto object-cover"
+                  />
                 </div>
                 <div className="rpg-nameplate mt-1 bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900">
                   <p className="text-white text-center text-xs sm:text-sm">酒場</p>
@@ -317,12 +341,16 @@ export default function HomePage() {
 
                   {/* Mo-chan */}
                   <div
-                    className="relative w-16 h-16 sm:w-20 sm:h-20 cursor-pointer"
+                    className="relative w-16 h-16 sm:w-20 sm:h-20 cursor-pointer rounded-full overflow-hidden"
                     style={{ animation: "rpg-float 3s ease-in-out infinite" }}
                     onClick={toggleChat}
                   >
                     <div className="absolute -inset-1 rounded-full bg-purple-500 bg-opacity-30 animate-pulse"></div>
-                    <Image src="/cow-fairy.webp" alt="片付けの妖精モーちゃん" fill className="object-contain" />
+                    <Image
+                      src="/cow-fairy.webp"
+                      alt="片付けの妖精モーちゃん"
+                      fill
+                      className="object-contain" />
                   </div>
                 </div>
               </div>

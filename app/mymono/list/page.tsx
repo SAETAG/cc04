@@ -90,7 +90,7 @@ interface Item {
 }
 
 export default function MyMonoListPage() {
-  const [isMuted, setIsMuted] = useState(true)
+  const [isMuted, setIsMuted] = useState(false)
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -108,7 +108,7 @@ export default function MyMonoListPage() {
   })
 
   useEffect(() => {
-    const audioElement = new Audio("/information.mp3")
+    const audioElement = new Audio("/mymono.mp3")
     audioElement.loop = true
     setAudio(audioElement)
 
