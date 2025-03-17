@@ -268,7 +268,7 @@ export default function ClosetPage() {
               <h2 className="text-xl font-bold text-yellow-300 mt-8 mb-4 text-center">モーちゃん</h2>
 
               <p className="text-white text-center mb-6">
-                クローゼット王国へようこそ！１ステージづつ片付けいこう！ステージのボタンを押すとチュートリアル画像が流れて、そのあといよいよ実践が始まるよ！さぁ、一緒に冒険だ！
+                クローゼット王国へようこそ！１ステージづつ片付けいこう！さぁ、一緒に冒険だ！
               </p>
 
               <div className="flex justify-center">
@@ -276,7 +276,7 @@ export default function ClosetPage() {
                   onClick={closeWelcome}
                   className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold"
                 >
-                  冒険を始める
+                  クローゼット王国へ
                 </Button>
               </div>
             </div>

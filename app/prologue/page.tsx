@@ -6,13 +6,35 @@ import { Volume2, VolumeX, FastForward } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
-export default function ProloguePage() {
+// Base component structure without any dynamic content
+const StaticPrologueBase = () => (
+  <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-teal-950">
+    <div className="max-w-md w-full bg-opacity-90 p-6 sm:p-8 rounded-xl shadow-lg border-2 border-teal-700 z-10 relative">
+      <div className="text-center space-y-6">
+        <h1 className="text-3xl sm:text-4xl font-bold text-yellow-300 tracking-tight drop-shadow-[0_0_8px_rgba(250,204,21,0.7)]">
+          乱れしクローゼット王国
+        </h1>
+        <p className="text-white text-sm sm:text-base">物語を始めるには以下のボタンをクリックしてください</p>
+        <div className="w-full sm:w-auto bg-teal-800 text-yellow-300 font-medium py-2 px-4 rounded-lg border border-teal-600">
+          物語を始める
+        </div>
+        <p className="text-xs text-teal-300 mt-4">※以降、効果音が鳴ります（音楽：魔王魂）</p>
+      </div>
+    </div>
+  </div>
+)
+
+// Dynamic component that will only be rendered on the client
+const DynamicPrologue = () => {
   const [stage, setStage] = useState(0)
+  const [prevStage, setPrevStage] = useState(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
-  const [typedText, setTypedText] = useState("")
-  const [isTyping, setIsTyping] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const stageTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const [stageProgress, setStageProgress] = useState(0) // 0-100 for progress within a stage
+  const [autoAdvance, setAutoAdvance] = useState(true) // Control auto advancement
 
   // Story text for each stage
   const storyTexts = [
@@ -24,6 +46,20 @@ export default function ProloguePage() {
     "",
   ]
 
+  // Particle sets for each stage
+  const stageParticles = {
+    1: ["✨", "❤️", "💫", "💕", "🌟"], // Harmony and beauty
+    2: ["💀", "🍂", "🌑", "⚡", "🕸️"], // Chaos and darkness
+    3: ["🧦", "👕", "👗", "🧣", "🧤"], // Clothing items
+    4: ["🗡️", "🔮", "⏱️", "🛡️", "📜"], // Adventure items
+    5: ["✨", "🎉", "🎊", "🏆", "👑"], // Celebration
+  }
+
+  // Split text into paragraphs for display
+  const splitTextIntoParagraphs = (text: string) => {
+    return text.split("\n").filter((p) => p.trim() !== "")
+  }
+
   // Background colors for each stage
   const bgColors = [
     "bg-teal-950", // Initial
@@ -34,52 +70,88 @@ export default function ProloguePage() {
     "bg-teal-700", // Final
   ]
 
-  // Typewriter effect
+  // Handle smooth stage transitions
   useEffect(() => {
-    if (stage > 0 && stage < 5) {
-      setIsTyping(true)
-      setTypedText("")
+    if (stage !== prevStage) {
+      setIsTransitioning(true)
 
-      const text = storyTexts[stage]
-      let index = 0
+      // After transition completes, update prevStage
+      const transitionTimer = setTimeout(() => {
+        setPrevStage(stage)
+        setIsTransitioning(false)
+      }, 1000) // Match this with the transition duration
 
-      // Start with an empty string
-      setTypedText("")
-
-      const typingInterval = setInterval(() => {
-        if (index < text.length) {
-          setTypedText((current) => current + text.charAt(index))
-          index++
-        } else {
-          clearInterval(typingInterval)
-          setIsTyping(false)
-
-          // Auto advance to next stage after text is fully typed and a delay
-          const timer = setTimeout(() => {
-            if (stage < 5) {
-              setStage(stage + 1)
-            }
-          }, 3000)
-
-          return () => clearTimeout(timer)
-        }
-      }, 100)
-
-      return () => clearInterval(typingInterval)
+      return () => clearTimeout(transitionTimer)
     }
-  }, [stage])
+  }, [stage, prevStage])
+
+  // Clear all timers
+  const clearAllTimers = () => {
+    if (stageTimerRef.current) {
+      clearTimeout(stageTimerRef.current)
+      stageTimerRef.current = null
+    }
+  }
+
+  // Handle stage transitions and progress
+  useEffect(() => {
+    // Clear any existing timers when stage changes
+    clearAllTimers()
+
+    // Disable auto-advance for stage 4
+    if (stage === 4) {
+      setAutoAdvance(false)
+    } else {
+      setAutoAdvance(true)
+    }
+
+    if (stage > 0 && stage < 6) {
+      console.log(`Showing stage ${stage}`)
+      setStageProgress(0)
+
+      // Update progress every 100ms
+      const progressInterval = setInterval(() => {
+        setStageProgress((prev) => {
+          if (prev < 100) {
+            return prev + 1
+          } else {
+            clearInterval(progressInterval)
+            return 100
+          }
+        })
+      }, 80) // 8 seconds total duration (80ms * 100)
+
+      // Auto advance to next stage after a delay (except for stage 4)
+      if (autoAdvance && stage < 4) {
+        stageTimerRef.current = setTimeout(() => {
+          console.log(`Advancing to stage ${stage + 1}`)
+          clearInterval(progressInterval)
+          if (stage < 5) {
+            setStage(stage + 1)
+          }
+        }, 8000) // Show each stage for 8 seconds
+      }
+
+      return () => {
+        clearInterval(progressInterval)
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      clearAllTimers()
+    }
+  }, [stage, autoAdvance])
 
   // Initialize audio
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      audioRef.current = new Audio("/prologue.mp3")
-      audioRef.current.loop = true
+    audioRef.current = new Audio("/prologue.mp3")
+    audioRef.current.loop = true
 
-      return () => {
-        if (audioRef.current) {
-          audioRef.current.pause()
-          audioRef.current = null
-        }
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
       }
     }
   }, [])
@@ -105,8 +177,8 @@ export default function ProloguePage() {
 
   // Skip animation
   const skipAnimation = () => {
+    clearAllTimers()
     setStage(5)
-    setIsTyping(false)
   }
 
   // Start the prologue
@@ -115,104 +187,209 @@ export default function ProloguePage() {
     setStage(1)
   }
 
-  // Debug function to check the text content
-  const debugText = (stage: number) => {
-    if (stage > 0 && stage < 5) {
-      console.log(`Stage ${stage} text starts with: ${storyTexts[stage].substring(0, 10)}`)
-    }
+  // Continue to character creation
+  const continueToCharacterCreation = () => {
+    setStage(5)
   }
 
-  // Call debug function when stage changes
-  useEffect(() => {
-    debugText(stage)
-  }, [stage])
+  // Get paragraphs for current stage
+  const currentParagraphs = stage > 0 && stage < 5 ? splitTextIntoParagraphs(storyTexts[stage]) : []
+
+  // Floating particles for background effect based on current stage
+  const renderParticles = (forStage: number) => {
+    if (forStage === 0 || !stageParticles[forStage as keyof typeof stageParticles]) return null
+
+    const particles = stageParticles[forStage as keyof typeof stageParticles]
+
+    return Array.from({ length: 20 }).map((_, i) => {
+      const particle = particles[Math.floor(Math.random() * particles.length)]
+      const size = Math.random() * 20 + 10
+      const opacity = Math.random() * 0.3 + 0.1
+      const duration = Math.random() * 5 + 3
+      const delay = Math.random() * 2
+
+      return (
+        <div
+          key={i}
+          className="absolute animate-float-animation"
+          style={{
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            fontSize: `${size}px`,
+            opacity: opacity,
+            animationDuration: `${duration}s`,
+            animationDelay: `${delay}s`,
+            transform: `rotate(${Math.random() * 360}deg)`,
+          }}
+        >
+          {particle}
+        </div>
+      )
+    })
+  }
 
   return (
-    <div
-      className={`min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden transition-colors duration-1000 ${bgColors[stage]}`}
-    >
-      {/* Audio controls */}
-      {stage > 0 && (
-        <div className="fixed top-4 right-4 flex gap-2 z-20">
-          <Button
-            variant="outline"
-            size="icon"
-            className="bg-teal-800 border-teal-600 text-white hover:bg-teal-700"
-            onClick={toggleMute}
-          >
-            {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-          </Button>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Background layers for smooth transitions */}
+      <div
+        className={`absolute inset-0 ${bgColors[prevStage]} transition-opacity duration-1000 ease-in-out z-0`}
+        style={{ opacity: isTransitioning ? 0 : 1 }}
+      />
 
-          <Button
-            variant="outline"
-            size="icon"
-            className="bg-teal-800 border-teal-600 text-white hover:bg-teal-700"
-            onClick={skipAnimation}
-          >
-            <FastForward className="h-5 w-5" />
-          </Button>
+      <div
+        className={`absolute inset-0 ${bgColors[stage]} transition-opacity duration-1000 ease-in-out z-0`}
+        style={{ opacity: isTransitioning ? 1 : 0 }}
+      />
+
+      {/* Background particles - previous stage */}
+      {prevStage > 0 && (
+        <div
+          className="absolute inset-0 overflow-hidden pointer-events-none z-1"
+          style={{ opacity: isTransitioning ? 0 : 1, transition: "opacity 1000ms ease-in-out" }}
+        >
+          {renderParticles(prevStage)}
         </div>
       )}
 
-      {/* Content container */}
-      <div className="max-w-md w-full bg-opacity-90 p-6 sm:p-8 rounded-xl shadow-lg border-2 border-teal-700 z-10 relative">
-        {/* Stage 0: Initial screen */}
-        {stage === 0 && (
-          <div className="text-center space-y-6">
-            <h1 className="text-3xl sm:text-4xl font-bold text-yellow-300 tracking-tight drop-shadow-[0_0_8px_rgba(250,204,21,0.7)]">
-              乱れしクローゼット王国
-            </h1>
-            <p className="text-white text-sm sm:text-base">物語を始めるには以下のボタンをクリックしてください</p>
-            <Button
-              className="w-full sm:w-auto bg-teal-800 hover:bg-teal-700 text-yellow-300 drop-shadow-[0_0_5px_rgba(250,204,21,0.7)] font-medium py-2 px-4 rounded-lg border border-teal-600"
-              onClick={startPrologue}
-            >
-              物語を始める
-            </Button>
-            <p className="text-xs text-teal-300 mt-4">※以降、効果音が鳴ります（音楽：魔王魂）</p>
+      {/* Background particles - current stage */}
+      {stage > 0 && (
+        <div
+          className="absolute inset-0 overflow-hidden pointer-events-none z-1"
+          style={{ opacity: isTransitioning ? 1 : 0, transition: "opacity 1000ms ease-in-out" }}
+        >
+          {renderParticles(stage)}
+        </div>
+      )}
+
+      {/* Main content */}
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 relative z-10">
+        {/* Progress bar */}
+        {stage > 0 && stage < 5 && (
+          <div className="fixed top-4 left-4 w-24 h-1 bg-gray-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-yellow-300 transition-all duration-300 ease-linear"
+              style={{ width: `${stageProgress}%` }}
+            ></div>
           </div>
         )}
 
-        {/* Stage 1-4: Story narration */}
-        {stage > 0 && stage < 5 && (
-          <div className="text-center space-y-4">
-            {stage === 1 && (
-              <h2 className="text-2xl sm:text-3xl font-bold text-yellow-300 drop-shadow-[0_0_8px_rgba(250,204,21,0.7)] mb-6">
-                乱れしクローゼット王国
-              </h2>
-            )}
+        {/* Audio controls */}
+        {stage > 0 && (
+          <div className="fixed top-4 right-4 flex gap-2 z-20">
+            <Button
+              variant="outline"
+              size="icon"
+              className="bg-teal-800 border-teal-600 text-white hover:bg-teal-700"
+              onClick={toggleMute}
+            >
+              {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+            </Button>
 
-            {stage === 3 && (
-              <div className="flex justify-center mb-4">
-                <div className="relative w-24 h-24 sm:w-32 sm:h-32">
-                  <Image src="/cow-fairy.webp" alt="片付けの妖精モーちゃん" fill className="object-contain" />
+            <Button
+              variant="outline"
+              size="icon"
+              className="bg-teal-800 border-teal-600 text-white hover:bg-teal-700"
+              onClick={skipAnimation}
+            >
+              <FastForward className="h-5 w-5" />
+            </Button>
+          </div>
+        )}
+
+        {/* Content container */}
+        <div className="max-w-md w-full bg-opacity-90 p-6 sm:p-8 rounded-xl shadow-lg border-2 border-teal-700 z-10 relative bg-black bg-opacity-50">
+          {/* Stage 0: Initial screen */}
+          {stage === 0 && (
+            <div className="text-center space-y-6">
+              <h1 className="text-3xl sm:text-4xl font-bold text-yellow-300 tracking-tight drop-shadow-[0_0_8px_rgba(250,204,21,0.7)]">
+                クローゼット王国
+              </h1>
+              <p className="text-white text-sm sm:text-base">ボタンを押して物語を始めよう</p>
+              <Button
+                className="w-full sm:w-auto bg-teal-800 hover:bg-teal-700 text-yellow-300 drop-shadow-[0_0_5px_rgba(250,204,21,0.7)] font-medium py-2 px-4 rounded-lg border border-teal-600"
+                onClick={startPrologue}
+              >
+                物語を始める
+              </Button>
+              <p className="text-s text-teal-300 mt-4">※以降、効果音が鳴ります（音楽：魔王魂）</p>
+            </div>
+          )}
+
+          {/* Stage 1-4: Story narration */}
+          {stage > 0 && stage < 5 && (
+            <div className="text-center space-y-4">
+              {stage === 1 && (
+                <h2 className="text-2xl sm:text-3xl font-bold text-yellow-300 drop-shadow-[0_0_8px_rgba(250,204,21,0.7)] mb-6 animate-magical-appear">
+                  乱れしクローゼット王国
+                </h2>
+              )}
+
+              {stage === 3 && (
+                <div className="flex justify-center mb-4 animate-magical-appear">
+                  <div className="relative w-24 h-24 sm:w-32 sm:h-32">
+                    <Image src="/cow-fairy.webp" alt="片付けの妖精モーちゃん" fill className="object-contain" />
+                  </div>
+                </div>
+              )}
+
+              {stage === 3 && (
+                <h3 className="text-xl font-bold text-yellow-200 mb-2 animate-magical-appear">
+                  片付けの妖精モーちゃん
+                </h3>
+              )}
+
+              <div className="bg-black bg-opacity-50 p-4 rounded-lg">
+                <div className="text-white text-sm sm:text-base whitespace-pre-line text-left space-y-2">
+                  {/* Display all paragraphs immediately without animation */}
+                  {currentParagraphs.map((paragraph, index) => (
+                    <p key={index}>{paragraph}</p>
+                  ))}
                 </div>
               </div>
-            )}
 
-            {stage === 3 && <h3 className="text-xl font-bold text-yellow-200 mb-2">片付けの妖精モーちゃん</h3>}
-
-            <div className="bg-black bg-opacity-50 p-4 rounded-lg">
-              <p className="text-white text-sm sm:text-base whitespace-pre-line text-left">{typedText}</p>
+              {/* Continue button for stage 4 */}
+              {stage === 4 && stageProgress === 100 && (
+                <div className="mt-6 animate-magical-appear" style={{ animationDelay: "2s" }}>
+                  <Button
+                    className="w-full sm:w-auto bg-teal-800 hover:bg-teal-700 text-yellow-300 drop-shadow-[0_0_5px_rgba(250,204,21,0.7)] font-medium py-2 px-4 rounded-lg border border-teal-600"
+                    onClick={continueToCharacterCreation}
+                  >
+                    次へ
+                  </Button>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Stage 5: Final screen */}
-        {stage === 5 && (
-          <div className="text-center space-y-6">
-            <h2 className="text-2xl sm:text-3xl font-bold text-yellow-300 drop-shadow-[0_0_8px_rgba(250,204,21,0.7)]">
-              さぁ、冒険を始めよう！
-            </h2>
-            <Link href="/charasetting" className="block">
-              <Button className="w-full sm:w-auto bg-teal-800 hover:bg-teal-900 text-yellow-300 drop-shadow-[0_0_5px_rgba(250,204,21,0.7)] font-medium py-2 px-4 rounded-lg border border-teal-600 transition-colors duration-200">
-                冒険の準備を始める
-              </Button>
-            </Link>
-          </div>
-        )}
+          {/* Stage 5: Final screen */}
+          {stage === 5 && (
+            <div className="text-center space-y-6">
+              <h2 className="text-2xl sm:text-3xl font-bold text-yellow-300 drop-shadow-[0_0_8px_rgba(250,204,21,0.7)] animate-magical-appear">
+                さぁ、冒険を始めよう！
+              </h2>
+              <Link href="/charasetting" className="block animate-magical-appear" style={{ animationDelay: "0.5s" }}>
+                <Button className="w-full sm:w-auto bg-teal-800 hover:bg-teal-900 text-yellow-300 drop-shadow-[0_0_5px_rgba(250,204,21,0.7)] font-medium py-2 px-4 rounded-lg border border-teal-600 transition-colors duration-200">
+                  冒険の準備を始める
+                </Button>
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
+}
+
+// Main component that handles client/server rendering
+export default function ProloguePage() {
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // On the server, render the static base
+  // On the client, replace it with the dynamic component
+  return isClient ? <DynamicPrologue /> : <StaticPrologueBase />
 }
 

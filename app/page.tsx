@@ -56,7 +56,7 @@ export default function Home() {
               className="text-xl sm:text-2xl font-medium text-amber-200 drop-shadow-[0_0_8px_rgba(251,191,36,0.7)] animate-magical-appear"
               style={{ animationDelay: "1.5s" }}
             >
-              見つける物語。
+              取り戻すまでの物語
             </div>
           </div>
         </div>
