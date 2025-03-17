@@ -13,7 +13,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 
-// Mock data for items
+// Define the Item interface
+interface Item {
+  id: number
+  title: string
+  image: string
+  description: string
+  category: string
+  date: string
+}
+
+//  // data for items
 const mockItems = [
   {
     id: 1,
@@ -85,8 +95,8 @@ interface Item {
   title: string
   image: string
   description: string
-  category?: string
-  date?: string
+  category: string
+  date: string
 }
 
 export default function MyMonoListPage() {
@@ -98,10 +108,12 @@ export default function MyMonoListPage() {
   const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false)
   const [items, setItems] = useState(mockItems)
   const [newItem, setNewItem] = useState<{
+    category: string
     title: string
     description: string
     image: string
   }>({
+    category: "",
     title: "",
     description: "",
     image: "/placeholder.svg?height=300&width=200",
@@ -141,17 +153,18 @@ export default function MyMonoListPage() {
     setIsDialogOpen(true)
   }
 
-  const handleAddItem = () => {
+ const handleAddItem = () => {
     const newItemWithId: Item = {
       ...newItem,
       id: items.length + 1,
-      category: "新規追加",
+      category: newItem.category || "新規追加",
       date: new Date().toISOString().split("T")[0],
     }
 
     setItems([...items, newItemWithId])
     setIsAddItemDialogOpen(false)
     setNewItem({
+      category: "",
       title: "",
       description: "",
       image: "/placeholder.svg?height=300&width=200",
