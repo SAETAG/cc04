@@ -21,7 +21,7 @@ type Item = {
 
 export default function Stage11BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
-  const [audioLoaded, setAudioLoaded] = useState(false)
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [items, setItems] = useState<Item[]>([])
   const [currentItem, setCurrentItem] = useState<Partial<Item>>({
     id: "",
@@ -33,7 +33,6 @@ export default function Stage11BattlePage() {
   const [isMobile, setIsMobile] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -44,67 +43,61 @@ export default function Stage11BattlePage() {
     }
   }, [])
 
-  // Initialize audio
+  // シンプルな音声初期化
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        // Create audio element
-        const audio = new Audio()
+    const audioElement = new Audio("/stepfight_11.mp3")
+    audioElement.loop = true
+    audioElement.volume = 0.7
+    setAudio(audioElement)
 
-        // Set up event listeners
-        audio.addEventListener("canplaythrough", () => {
-          setAudioLoaded(true)
-          if (!isMuted) {
-            audio.play().catch((e) => {
-              console.log("Audio play was prevented: ", e)
-              // This is often due to browser autoplay policies
-            })
-          }
-        })
+    try {
+      audioElement.play().catch((error) => {
+        console.log("Auto-play was prevented:", error)
+      })
+    } catch (error) {
+      console.log("Audio play error:", error)
+    }
 
-        audio.addEventListener("error", (e) => {
-          console.log("Audio loading error: ", e)
-          setAudioLoaded(false)
-        })
-
-        // Set properties
-        audio.src = "/stepfight_11.mp3"
-        audio.loop = true
-        audio.volume = 0.7 // Set to 70% volume
-        audio.muted = isMuted
-
-        // Store reference
-        audioRef.current = audio
-
-        // Clean up
-        return () => {
-          if (audioRef.current) {
-            audioRef.current.pause()
-            audioRef.current.src = ""
-            audioRef.current = null
-          }
-        }
-      } catch (error) {
-        console.error("Audio initialization error:", error)
-      }
+    return () => {
+      audioElement.pause()
+      audioElement.src = ""
     }
   }, [])
 
-  // Toggle mute
-  const toggleMute = () => {
-    const newMutedState = !isMuted
-    setIsMuted(newMutedState)
+  // ミュート状態が変更されたときに適用
+  useEffect(() => {
+    if (audio) {
+      audio.muted = isMuted
 
-    if (audioRef.current) {
-      audioRef.current.muted = newMutedState
-
-      // If unmuting and audio is loaded but not playing, try to play
-      if (!newMutedState && audioLoaded && audioRef.current.paused) {
-        audioRef.current.play().catch((e) => {
-          console.log("Audio play was prevented on unmute: ", e)
-        })
+      // ミュート解除時に再生を試みる
+      if (!isMuted && audio.paused) {
+        try {
+          audio.play().catch((error) => {
+            console.log("Play on unmute failed:", error)
+          })
+        } catch (error) {
+          console.log("Play error:", error)
+        }
       }
     }
+  }, [isMuted, audio])
+
+  // 画面タップで再生を試みる関数
+  const tryPlayAudio = () => {
+    if (audio && audio.paused && !isMuted) {
+      try {
+        audio.play().catch((error) => {
+          console.log("Play on screen tap failed:", error)
+        })
+      } catch (error) {
+        console.log("Play error:", error)
+      }
+    }
+  }
+
+  // Toggle mute
+  const toggleMute = () => {
+    setIsMuted(!isMuted)
   }
 
   // Handle file upload
@@ -120,11 +113,17 @@ export default function Stage11BattlePage() {
       }
       reader.readAsDataURL(file)
     }
+
+    // ファイル選択時に音声再生を試みる（ユーザーインタラクション）
+    tryPlayAudio()
   }
 
   // Trigger file input click
   const triggerFileInput = () => {
     fileInputRef.current?.click()
+
+    // ファイルアップロードボタンクリック時に音声再生を試みる（ユーザーインタラクション）
+    tryPlayAudio()
   }
 
   // Open camera on mobile devices
@@ -134,6 +133,9 @@ export default function Stage11BattlePage() {
       fileInputRef.current.capture = "environment"
       fileInputRef.current.click()
     }
+
+    // カメラボタンクリック時に音声再生を試みる（ユーザーインタラクション）
+    tryPlayAudio()
   }
 
   // Add new item
@@ -155,11 +157,17 @@ export default function Stage11BattlePage() {
       })
       setIsAddingItem(false)
     }
+
+    // アイテム追加時に音声再生を試みる（ユーザーインタラクション）
+    tryPlayAudio()
   }
 
   // Remove item
   const removeItem = (id: string) => {
     setItems(items.filter((item) => item.id !== id))
+
+    // アイテム削除時に音声再生を試みる（ユーザーインタラクション）
+    tryPlayAudio()
   }
 
   // Save record to database and navigate to clear page
@@ -186,7 +194,7 @@ export default function Stage11BattlePage() {
   }
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col">
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}
@@ -286,7 +294,10 @@ export default function Stage11BattlePage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setIsAddingItem(false)}
+                  onClick={() => {
+                    setIsAddingItem(false)
+                    tryPlayAudio()
+                  }}
                   className="text-white hover:bg-teal-700"
                 >
                   <X className="h-4 w-4" />
@@ -322,6 +333,35 @@ export default function Stage11BattlePage() {
                       <Upload className="h-4 w-4" />
                       写真をアップロード
                     </Button>
+
+                    {isMobile && (
+                      <Button
+                        onClick={openCamera}
+                        className="bg-teal-700 hover:bg-teal-800 text-white flex items-center gap-2"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                        カメラで撮影
+                      </Button>
+                    )}
                   </div>
 
                   <input
@@ -344,6 +384,7 @@ export default function Stage11BattlePage() {
                     onChange={(e) => setCurrentItem({ ...currentItem, name: e.target.value })}
                     placeholder="例：黒のTシャツ、デニムパンツなど"
                     className="bg-teal-900 border-teal-600 text-white placeholder:text-teal-400"
+                    onClick={tryPlayAudio}
                   />
                 </div>
 
@@ -358,6 +399,7 @@ export default function Stage11BattlePage() {
                     onChange={(e) => setCurrentItem({ ...currentItem, description: e.target.value })}
                     placeholder="例：お気に入りの服、よく着る服、サイズなど"
                     className="bg-teal-900 border-teal-600 text-white placeholder:text-teal-400 h-20"
+                    onClick={tryPlayAudio}
                   />
                 </div>
 
@@ -373,7 +415,10 @@ export default function Stage11BattlePage() {
             </div>
           ) : (
             <Button
-              onClick={() => setIsAddingItem(true)}
+              onClick={() => {
+                setIsAddingItem(true)
+                tryPlayAudio()
+              }}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 mb-6 flex items-center justify-center gap-2"
             >
               <Plus className="h-5 w-5" />
@@ -400,7 +445,10 @@ export default function Stage11BattlePage() {
           {/* Submit button */}
           <div className="flex justify-center mt-6">
             <Button
-              onClick={saveRecord}
+              onClick={() => {
+                tryPlayAudio()
+                saveRecord()
+              }}
               disabled={isSaving || items.length < 1}
               className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold py-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >

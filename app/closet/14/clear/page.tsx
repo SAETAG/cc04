@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Volume2, VolumeX, Home, Trophy, ArrowRight, Star, Key, Beer } from "lucide-react"
@@ -8,57 +8,49 @@ import { useRouter } from "next/navigation"
 
 export default function Clear14() {
   const [isMuted, setIsMuted] = useState(false)
-  const [audioLoaded, setAudioLoaded] = useState(false)
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [showConfetti, setShowConfetti] = useState(true)
   const [showRewards, setShowRewards] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const router = useRouter()
 
-  // Initialize audio
+  // シンプルな音声初期化
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        // Create audio element
-        const audio = new Audio()
+    const audioElement = new Audio("/stepclear.mp3")
+    audioElement.loop = true
+    audioElement.volume = 0.7
+    setAudio(audioElement)
 
-        // Set up event listeners
-        audio.addEventListener("canplaythrough", () => {
-          setAudioLoaded(true)
-          if (!isMuted) {
-            audio.play().catch((e) => {
-              console.log("Audio play was prevented: ", e)
-              // This is often due to browser autoplay policies
-            })
-          }
-        })
+    try {
+      audioElement.play().catch((error) => {
+        console.log("Auto-play was prevented:", error)
+      })
+    } catch (error) {
+      console.log("Audio play error:", error)
+    }
 
-        audio.addEventListener("error", (e) => {
-          console.log("Audio loading error: ", e)
-          setAudioLoaded(false)
-        })
-
-        // Set properties
-        audio.src = "/stepclear.mp3"
-        audio.loop = true
-        audio.volume = 0.7 // Set to 70% volume
-        audio.muted = isMuted
-
-        // Store reference
-        audioRef.current = audio
-
-        // Clean up
-        return () => {
-          if (audioRef.current) {
-            audioRef.current.pause()
-            audioRef.current.src = ""
-            audioRef.current = null
-          }
-        }
-      } catch (error) {
-        console.error("Audio initialization error:", error)
-      }
+    return () => {
+      audioElement.pause()
+      audioElement.src = ""
     }
   }, [])
+
+  // ミュート状態が変更されたときに適用
+  useEffect(() => {
+    if (audio) {
+      audio.muted = isMuted
+
+      // ミュート解除時に再生を試みる
+      if (!isMuted && audio.paused) {
+        try {
+          audio.play().catch((error) => {
+            console.log("Play on unmute failed:", error)
+          })
+        } catch (error) {
+          console.log("Play error:", error)
+        }
+      }
+    }
+  }, [isMuted, audio])
 
   // Hide confetti after some time
   useEffect(() => {
@@ -78,41 +70,40 @@ export default function Clear14() {
     return () => clearTimeout(timer)
   }, [])
 
-  // Toggle mute
-  const toggleMute = () => {
-    const newMutedState = !isMuted
-    setIsMuted(newMutedState)
-
-    if (audioRef.current) {
-      audioRef.current.muted = newMutedState
-
-      // If unmuting and audio is loaded but not playing, try to play
-      if (!newMutedState && audioLoaded && audioRef.current.paused) {
-        audioRef.current.play().catch((e) => {
-          console.log("Audio play was prevented on unmute: ", e)
+  // 画面タップで再生を試みる関数
+  const tryPlayAudio = () => {
+    if (audio && audio.paused && !isMuted) {
+      try {
+        audio.play().catch((error) => {
+          console.log("Play on screen tap failed:", error)
         })
+      } catch (error) {
+        console.log("Play error:", error)
       }
     }
   }
 
+  // Toggle mute
+  const toggleMute = () => {
+    setIsMuted(!isMuted)
+  }
+
   const handleContinue = () => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current = null
+    if (audio) {
+      audio.pause()
     }
     router.push("/closet/endroll")
   }
 
   const handleBackToMap = () => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current = null
+    if (audio) {
+      audio.pause()
     }
     router.push("/closet")
   }
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col">
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}

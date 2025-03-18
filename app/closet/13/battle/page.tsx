@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -18,73 +18,66 @@ import {
 export default function Stage13Battle() {
   const router = useRouter()
   const [isMuted, setIsMuted] = useState(false)
-  const [audioLoaded, setAudioLoaded] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
   const [checkedItems, setCheckedItems] = useState<boolean[]>([false, false, false, false, false])
   const [allChecked, setAllChecked] = useState(false)
 
-  // Initialize audio
+  // シンプルな音声初期化
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        // Create audio element
-        const audio = new Audio()
+    const audioElement = new Audio("/stepfight_13.mp3")
+    audioElement.loop = true
+    audioElement.volume = 0.7
+    setAudio(audioElement)
 
-        // Set up event listeners
-        audio.addEventListener("canplaythrough", () => {
-          setAudioLoaded(true)
-          if (!isMuted) {
-            audio.play().catch((e) => {
-              console.log("Audio play was prevented: ", e)
-              // This is often due to browser autoplay policies
-            })
-          }
-        })
+    try {
+      audioElement.play().catch((error) => {
+        console.log("Auto-play was prevented:", error)
+      })
+    } catch (error) {
+      console.log("Audio play error:", error)
+    }
 
-        audio.addEventListener("error", (e) => {
-          console.log("Audio loading error: ", e)
-          setAudioLoaded(false)
-        })
-
-        // Set properties
-        audio.src = "/stepfight_13.mp3"
-        audio.loop = true
-        audio.volume = 0.7 // Set to 70% volume
-        audio.muted = isMuted
-
-        // Store reference
-        audioRef.current = audio
-
-        // Clean up
-        return () => {
-          if (audioRef.current) {
-            audioRef.current.pause()
-            audioRef.current.src = ""
-            audioRef.current = null
-          }
-        }
-      } catch (error) {
-        console.error("Audio initialization error:", error)
-      }
+    return () => {
+      audioElement.pause()
+      audioElement.src = ""
     }
   }, [])
 
-  // Toggle mute
-  const toggleMute = () => {
-    const newMutedState = !isMuted
-    setIsMuted(newMutedState)
+  // ミュート状態が変更されたときに適用
+  useEffect(() => {
+    if (audio) {
+      audio.muted = isMuted
 
-    if (audioRef.current) {
-      audioRef.current.muted = newMutedState
-
-      // If unmuting and audio is loaded but not playing, try to play
-      if (!newMutedState && audioLoaded && audioRef.current.paused) {
-        audioRef.current.play().catch((e) => {
-          console.log("Audio play was prevented on unmute: ", e)
-        })
+      // ミュート解除時に再生を試みる
+      if (!isMuted && audio.paused) {
+        try {
+          audio.play().catch((error) => {
+            console.log("Play on unmute failed:", error)
+          })
+        } catch (error) {
+          console.log("Play error:", error)
+        }
       }
     }
+  }, [isMuted, audio])
+
+  // 画面タップで再生を試みる関数
+  const tryPlayAudio = () => {
+    if (audio && audio.paused && !isMuted) {
+      try {
+        audio.play().catch((error) => {
+          console.log("Play on screen tap failed:", error)
+        })
+      } catch (error) {
+        console.log("Play error:", error)
+      }
+    }
+  }
+
+  // Toggle mute
+  const toggleMute = () => {
+    setIsMuted(!isMuted)
   }
 
   useEffect(() => {
@@ -95,6 +88,9 @@ export default function Stage13Battle() {
     const newCheckedItems = [...checkedItems]
     newCheckedItems[index] = !newCheckedItems[index]
     setCheckedItems(newCheckedItems)
+
+    // チェックボックス操作時に音声再生を試みる（ユーザーインタラクション）
+    tryPlayAudio()
   }
 
   const handleNextStep = () => {
@@ -154,7 +150,7 @@ export default function Stage13Battle() {
   ]
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col">
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}
@@ -217,7 +213,10 @@ export default function Stage13Battle() {
           <div className="bg-purple-900 bg-opacity-60 rounded-lg p-4 mb-6 border border-teal-600">
             <div className="flex justify-between items-center mb-4">
               <button
-                onClick={handlePrevStep}
+                onClick={() => {
+                  handlePrevStep()
+                  tryPlayAudio()
+                }}
                 disabled={currentStep === 0}
                 className={`p-2 rounded-full ${currentStep === 0 ? "text-gray-500" : "text-white hover:bg-purple-800"}`}
               >
@@ -227,7 +226,10 @@ export default function Stage13Battle() {
                 {currentStep + 1}. {checklistItems[currentStep].title}
               </h3>
               <button
-                onClick={handleNextStep}
+                onClick={() => {
+                  handleNextStep()
+                  tryPlayAudio()
+                }}
                 disabled={currentStep === 4}
                 className={`p-2 rounded-full ${currentStep === 4 ? "text-gray-500" : "text-white hover:bg-purple-800"}`}
               >
@@ -265,7 +267,10 @@ export default function Stage13Battle() {
               {checkedItems.map((checked, idx) => (
                 <div
                   key={idx}
-                  onClick={() => setCurrentStep(idx)}
+                  onClick={() => {
+                    setCurrentStep(idx)
+                    tryPlayAudio()
+                  }}
                   className={`cursor-pointer p-2 rounded-lg flex flex-col items-center justify-center border ${
                     currentStep === idx ? "bg-teal-800 border-yellow-400" : "bg-teal-900 border-teal-700"
                   }`}
@@ -282,7 +287,10 @@ export default function Stage13Battle() {
           </div>
 
           <button
-            onClick={handleComplete}
+            onClick={() => {
+              handleComplete()
+              tryPlayAudio()
+            }}
             disabled={!allChecked}
             className={`w-full py-4 rounded-lg text-xl font-bold transition duration-300 border-2 ${
               allChecked

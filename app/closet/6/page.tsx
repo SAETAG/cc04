@@ -7,73 +7,66 @@ import { Volume2, VolumeX, ArrowLeft, Home, Play } from "lucide-react"
 
 export default function Stage6Page() {
   const [isMuted, setIsMuted] = useState(false)
-  const [audioLoaded, setAudioLoaded] = useState(false)
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [showVideo, setShowVideo] = useState(false)
   const [videoEnded, setVideoEnded] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
-  // Initialize audio
+  // シンプルな音声初期化
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        // Create audio element
-        const audio = new Audio()
+    const audioElement = new Audio("/steptitle.mp3")
+    audioElement.loop = true
+    audioElement.volume = 0.7
+    setAudio(audioElement)
 
-        // Set up event listeners
-        audio.addEventListener("canplaythrough", () => {
-          setAudioLoaded(true)
-          if (!isMuted) {
-            audio.play().catch((e) => {
-              console.log("Audio play was prevented: ", e)
-              // This is often due to browser autoplay policies
-            })
-          }
-        })
+    try {
+      audioElement.play().catch((error) => {
+        console.log("Auto-play was prevented:", error)
+      })
+    } catch (error) {
+      console.log("Audio play error:", error)
+    }
 
-        audio.addEventListener("error", (e) => {
-          console.log("Audio loading error: ", e)
-          setAudioLoaded(false)
-        })
-
-        // Set properties
-        audio.src = "/steptitle.mp3"
-        audio.loop = true
-        audio.volume = 0.7 // Set to 70% volume
-        audio.muted = isMuted
-
-        // Store reference
-        audioRef.current = audio
-
-        // Clean up
-        return () => {
-          if (audioRef.current) {
-            audioRef.current.pause()
-            audioRef.current.src = ""
-            audioRef.current = null
-          }
-        }
-      } catch (error) {
-        console.error("Audio initialization error:", error)
-      }
+    return () => {
+      audioElement.pause()
+      audioElement.src = ""
     }
   }, [])
 
-  // Toggle mute
-  const toggleMute = () => {
-    const newMutedState = !isMuted
-    setIsMuted(newMutedState)
+  // ミュート状態が変更されたときに適用
+  useEffect(() => {
+    if (audio) {
+      audio.muted = isMuted
 
-    if (audioRef.current) {
-      audioRef.current.muted = newMutedState
-
-      // If unmuting and audio is loaded but not playing, try to play
-      if (!newMutedState && audioLoaded && audioRef.current.paused) {
-        audioRef.current.play().catch((e) => {
-          console.log("Audio play was prevented on unmute: ", e)
-        })
+      // ミュート解除時に再生を試みる
+      if (!isMuted && audio.paused) {
+        try {
+          audio.play().catch((error) => {
+            console.log("Play on unmute failed:", error)
+          })
+        } catch (error) {
+          console.log("Play error:", error)
+        }
       }
     }
+  }, [isMuted, audio])
+
+  // 画面タップで再生を試みる関数
+  const tryPlayAudio = () => {
+    if (audio && audio.paused && !isMuted) {
+      try {
+        audio.play().catch((error) => {
+          console.log("Play on screen tap failed:", error)
+        })
+      } catch (error) {
+        console.log("Play error:", error)
+      }
+    }
+  }
+
+  // Toggle mute
+  const toggleMute = () => {
+    setIsMuted(!isMuted)
   }
 
   // Handle video playback
@@ -81,9 +74,12 @@ export default function Stage6Page() {
     setShowVideo(true)
 
     // Pause the background music while the video is playing
-    if (audioRef.current) {
-      audioRef.current.pause()
+    if (audio) {
+      audio.pause()
     }
+
+    // 動画再生ボタンクリック時に音声再生を試みる（ユーザーインタラクション）
+    tryPlayAudio()
   }
 
   // Handle video end
@@ -91,8 +87,14 @@ export default function Stage6Page() {
     setVideoEnded(true)
 
     // Resume the background music when the video ends
-    if (audioRef.current && !isMuted) {
-      audioRef.current.play().catch((e) => console.log("Could not resume audio:", e))
+    if (audio && !isMuted) {
+      try {
+        audio.play().catch((error) => {
+          console.log("Could not resume audio:", error)
+        })
+      } catch (error) {
+        console.log("Play error:", error)
+      }
     }
   }
 
@@ -101,13 +103,19 @@ export default function Stage6Page() {
     setShowVideo(false)
 
     // Resume the background music when the video is closed
-    if (audioRef.current && !isMuted) {
-      audioRef.current.play().catch((e) => console.log("Could not resume audio:", e))
+    if (audio && !isMuted) {
+      try {
+        audio.play().catch((error) => {
+          console.log("Could not resume audio:", error)
+        })
+      } catch (error) {
+        console.log("Play error:", error)
+      }
     }
   }
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col">
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}
@@ -183,7 +191,10 @@ export default function Stage6Page() {
             </Button>
 
             <Link href="/closet/6/battle">
-              <Button className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-bold py-3 px-6 rounded-lg border border-red-400 shadow-lg">
+              <Button
+                className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-bold py-3 px-6 rounded-lg border border-red-400 shadow-lg"
+                onClick={tryPlayAudio}
+              >
                 戦う（片付ける）
               </Button>
             </Link>
@@ -222,7 +233,10 @@ export default function Stage6Page() {
               <div className="mt-4 text-center">
                 <p className="text-white mb-2">動画を見終わりました！準備はできましたか？</p>
                 <Link href="/closet/6/battle">
-                  <Button className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-bold">
+                  <Button
+                    className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-bold"
+                    onClick={tryPlayAudio}
+                  >
                     戦いに進む
                   </Button>
                 </Link>

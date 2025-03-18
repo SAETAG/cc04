@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -10,80 +10,76 @@ import { Volume2, VolumeX, ArrowLeft, Home, Layers } from "lucide-react"
 
 export default function Stage8BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
-  const [audioLoaded, setAudioLoaded] = useState(false)
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [showInstructions, setShowInstructions] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const router = useRouter()
 
-  // Initialize audio
+  // シンプルな音声初期化
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        // Create audio element
-        const audio = new Audio()
+    const audioElement = new Audio("/stepfight_8.mp3")
+    audioElement.loop = true
+    audioElement.volume = 0.7
+    setAudio(audioElement)
 
-        // Set up event listeners
-        audio.addEventListener("canplaythrough", () => {
-          setAudioLoaded(true)
-          if (!isMuted) {
-            audio.play().catch((e) => {
-              console.log("Audio play was prevented: ", e)
-              // This is often due to browser autoplay policies
-            })
-          }
-        })
+    try {
+      audioElement.play().catch((error) => {
+        console.log("Auto-play was prevented:", error)
+      })
+    } catch (error) {
+      console.log("Audio play error:", error)
+    }
 
-        audio.addEventListener("error", (e) => {
-          console.log("Audio loading error: ", e)
-          setAudioLoaded(false)
-        })
-
-        // Set properties
-        audio.src = "/stepfight_8.mp3"
-        audio.loop = true
-        audio.volume = 0.7 // Set to 70% volume
-        audio.muted = isMuted
-
-        // Store reference
-        audioRef.current = audio
-
-        // Clean up
-        return () => {
-          if (audioRef.current) {
-            audioRef.current.pause()
-            audioRef.current.src = ""
-            audioRef.current = null
-          }
-        }
-      } catch (error) {
-        console.error("Audio initialization error:", error)
-      }
+    return () => {
+      audioElement.pause()
+      audioElement.src = ""
     }
   }, [])
 
-  // Toggle mute
-  const toggleMute = () => {
-    const newMutedState = !isMuted
-    setIsMuted(newMutedState)
+  // ミュート状態が変更されたときに適用
+  useEffect(() => {
+    if (audio) {
+      audio.muted = isMuted
 
-    if (audioRef.current) {
-      audioRef.current.muted = newMutedState
-
-      // If unmuting and audio is loaded but not playing, try to play
-      if (!newMutedState && audioLoaded && audioRef.current.paused) {
-        audioRef.current.play().catch((e) => {
-          console.log("Audio play was prevented on unmute: ", e)
-        })
+      // ミュート解除時に再生を試みる
+      if (!isMuted && audio.paused) {
+        try {
+          audio.play().catch((error) => {
+            console.log("Play on unmute failed:", error)
+          })
+        } catch (error) {
+          console.log("Play error:", error)
+        }
       }
     }
+  }, [isMuted, audio])
+
+  // 画面タップで再生を試みる関数
+  const tryPlayAudio = () => {
+    if (audio && audio.paused && !isMuted) {
+      try {
+        audio.play().catch((error) => {
+          console.log("Play on screen tap failed:", error)
+        })
+      } catch (error) {
+        console.log("Play error:", error)
+      }
+    }
+  }
+
+  // Toggle mute
+  const toggleMute = () => {
+    setIsMuted(!isMuted)
   }
 
   // Handle type selection
   const handleTypeSelect = (type: string) => {
     setSelectedType(type)
     setShowInstructions(true)
+
+    // タイプ選択時に音声再生を試みる（ユーザーインタラクション）
+    tryPlayAudio()
   }
 
   // Save record to database and navigate to clear page
@@ -110,7 +106,7 @@ export default function Stage8BattlePage() {
   }
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col">
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}
@@ -177,7 +173,12 @@ export default function Stage8BattlePage() {
                 <RadioGroup value={selectedType || ""} onValueChange={setSelectedType} className="space-y-6">
                   <div className="bg-teal-800 bg-opacity-50 p-4 rounded-lg border border-teal-700">
                     <div className="flex items-start space-x-2">
-                      <RadioGroupItem value="work" id="work" className="mt-1 border-2 border-yellow-300" />
+                      <RadioGroupItem
+                        value="work"
+                        id="work"
+                        className="mt-1 border-2 border-yellow-300"
+                        onClick={tryPlayAudio}
+                      />
                       <div className="flex-1">
                         <Label htmlFor="work" className="text-yellow-300 font-bold cursor-pointer text-lg">
                           👩‍💼 仕事が多い人（ビジネスカジュアル・スーツが多い人）
@@ -191,7 +192,12 @@ export default function Stage8BattlePage() {
 
                   <div className="bg-teal-800 bg-opacity-50 p-4 rounded-lg border border-teal-700">
                     <div className="flex items-start space-x-2">
-                      <RadioGroupItem value="home" id="home" className="mt-1 border-2 border-yellow-300" />
+                      <RadioGroupItem
+                        value="home"
+                        id="home"
+                        className="mt-1 border-2 border-yellow-300"
+                        onClick={tryPlayAudio}
+                      />
                       <div className="flex-1">
                         <Label htmlFor="home" className="text-yellow-300 font-bold cursor-pointer text-lg">
                           🏡 おうち時間が多い人（リモートワーク・専業主婦・フリーランス）
@@ -205,7 +211,12 @@ export default function Stage8BattlePage() {
 
                   <div className="bg-teal-800 bg-opacity-50 p-4 rounded-lg border border-teal-700">
                     <div className="flex items-start space-x-2">
-                      <RadioGroupItem value="fashion" id="fashion" className="mt-1 border-2 border-yellow-300" />
+                      <RadioGroupItem
+                        value="fashion"
+                        id="fashion"
+                        className="mt-1 border-2 border-yellow-300"
+                        onClick={tryPlayAudio}
+                      />
                       <div className="flex-1">
                         <Label htmlFor="fashion" className="text-yellow-300 font-bold cursor-pointer text-lg">
                           👗 ファッション好きな人（トレンド・おしゃれを楽しみたい人）
@@ -219,7 +230,12 @@ export default function Stage8BattlePage() {
 
                   <div className="bg-teal-800 bg-opacity-50 p-4 rounded-lg border border-teal-700">
                     <div className="flex items-start space-x-2">
-                      <RadioGroupItem value="simple" id="simple" className="mt-1 border-2 border-yellow-300" />
+                      <RadioGroupItem
+                        value="simple"
+                        id="simple"
+                        className="mt-1 border-2 border-yellow-300"
+                        onClick={tryPlayAudio}
+                      />
                       <div className="flex-1">
                         <Label htmlFor="simple" className="text-yellow-300 font-bold cursor-pointer text-lg">
                           🛠️ とりあえず一番簡単に分けたい人（整理が苦手な人）
@@ -234,7 +250,10 @@ export default function Stage8BattlePage() {
 
                 <div className="flex justify-center mt-6">
                   <Button
-                    onClick={() => setShowInstructions(true)}
+                    onClick={() => {
+                      setShowInstructions(true)
+                      tryPlayAudio()
+                    }}
                     disabled={!selectedType}
                     className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-bold py-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -485,7 +504,10 @@ export default function Stage8BattlePage() {
               {/* Submit button */}
               <div className="flex justify-center mt-6">
                 <Button
-                  onClick={saveRecord}
+                  onClick={() => {
+                    tryPlayAudio()
+                    saveRecord()
+                  }}
                   disabled={isSaving}
                   className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold py-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >

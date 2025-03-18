@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -9,37 +9,66 @@ import { Volume2, VolumeX, ArrowLeft, Home } from "lucide-react"
 export default function Battle14() {
   const router = useRouter()
   const [isMuted, setIsMuted] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [checkedItems, setCheckedItems] = useState({
     madeLabels: false,
     attachedLabels: false,
     sharedWithFamily: false,
   })
 
+  // Initialize audio
   useEffect(() => {
-    audioRef.current = new Audio("/stepfight_14.mp3")
-    audioRef.current.loop = true
-    audioRef.current.play().catch((error) => console.error("Audio playback failed:", error))
+    if (typeof window !== "undefined") {
+      try {
+        const newAudio = new Audio("/stepfight_14.mp3")
+        newAudio.loop = true
+        newAudio.volume = 0.7
+        setAudio(newAudio)
+      } catch (error) {
+        console.error("Audio initialization error:", error)
+      }
+    }
 
+    // Cleanup function
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current = null
+      if (audio) {
+        audio.pause()
+        setAudio(null)
       }
     }
   }, [])
 
+  // Update mute state when it changes
+  useEffect(() => {
+    if (audio) {
+      audio.muted = isMuted
+    }
+  }, [isMuted, audio])
+
+  // Try to play audio - call this on user interactions
+  const tryPlayAudio = () => {
+    if (audio && !audio.paused) return // Already playing
+
+    if (audio && !isMuted) {
+      audio.play().catch((error) => {
+        console.log("Audio play failed:", error)
+      })
+    }
+  }
+
   const toggleMute = () => {
     setIsMuted(!isMuted)
-    if (audioRef.current) {
-      audioRef.current.muted = !audioRef.current.muted
+    if (audio) {
+      if (isMuted) {
+        // If we're unmuting, try to play
+        tryPlayAudio()
+      }
     }
   }
 
   const handleComplete = () => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current = null
+    if (audio) {
+      audio.pause()
     }
     router.push("/closet/14/clear")
   }
@@ -49,6 +78,7 @@ export default function Battle14() {
       ...checkedItems,
       [item]: !checkedItems[item],
     })
+    tryPlayAudio() // Try to play audio on interaction
   }
 
   // Check if all items are checked or at least one is checked
@@ -56,7 +86,7 @@ export default function Battle14() {
   const anyChecked = Object.values(checkedItems).some(Boolean)
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col">
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}
@@ -66,7 +96,7 @@ export default function Battle14() {
         <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-yellow-500"></div>
 
         <div className="flex items-center gap-2">
-          <Link href="/closet/14">
+          <Link href="/closet/14" onClick={tryPlayAudio}>
             <Button
               variant="outline"
               size="icon"
@@ -91,7 +121,7 @@ export default function Battle14() {
           >
             {isMuted ? <VolumeX className="h-4 w-4 sm:h-5 sm:w-5" /> : <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />}
           </Button>
-          <Link href="/home">
+          <Link href="/home" onClick={tryPlayAudio}>
             <Button
               variant="outline"
               size="icon"
@@ -197,7 +227,10 @@ export default function Battle14() {
           {/* Complete button */}
           <div className="flex justify-center mt-6">
             <Button
-              onClick={handleComplete}
+              onClick={() => {
+                tryPlayAudio()
+                handleComplete()
+              }}
               disabled={!anyChecked}
               className={`bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold py-2 px-6 ${!anyChecked ? "opacity-50 cursor-not-allowed" : ""}`}
             >

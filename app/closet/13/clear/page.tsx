@@ -1,62 +1,60 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Volume2, VolumeX, Home, Trophy, ArrowRight, Star, Beer } from "lucide-react"
 
 export default function Stage13ClearPage() {
   const [isMuted, setIsMuted] = useState(false)
-  const [audioLoaded, setAudioLoaded] = useState(false)
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [showConfetti, setShowConfetti] = useState(true)
   const [showRewards, setShowRewards] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   // Initialize audio
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
-        // Create audio element
-        const audio = new Audio()
+        const newAudio = new Audio("/stepclear.mp3")
+        newAudio.loop = true
+        newAudio.volume = 0.7
+        newAudio.muted = isMuted
+        setAudio(newAudio)
 
-        // Set up event listeners
-        audio.addEventListener("canplaythrough", () => {
-          setAudioLoaded(true)
-          if (!isMuted) {
-            audio.play().catch((e) => {
-              console.log("Audio play was prevented: ", e)
-              // This is often due to browser autoplay policies
-            })
-          }
+        // Try to play audio (will likely be blocked by browser)
+        newAudio.play().catch((e) => {
+          console.log("Initial audio play prevented:", e)
         })
 
-        audio.addEventListener("error", (e) => {
-          console.log("Audio loading error: ", e)
-          setAudioLoaded(false)
-        })
-
-        // Set properties
-        audio.src = "/stepclear.mp3"
-        audio.loop = true
-        audio.volume = 0.7 // Set to 70% volume
-        audio.muted = isMuted
-
-        // Store reference
-        audioRef.current = audio
-
-        // Clean up
         return () => {
-          if (audioRef.current) {
-            audioRef.current.pause()
-            audioRef.current.src = ""
-            audioRef.current = null
-          }
+          newAudio.pause()
+          newAudio.src = ""
         }
       } catch (error) {
         console.error("Audio initialization error:", error)
       }
     }
   }, [])
+
+  // Update muted state when it changes
+  useEffect(() => {
+    if (audio) {
+      audio.muted = isMuted
+      if (!isMuted) {
+        audio.play().catch((e) => {
+          console.log("Audio play prevented on unmute:", e)
+        })
+      }
+    }
+  }, [isMuted, audio])
+
+  const tryPlayAudio = () => {
+    if (audio && audio.paused && !isMuted) {
+      audio.play().catch((e) => {
+        console.log("Audio play prevented:", e)
+      })
+    }
+  }
 
   // Hide confetti after some time
   useEffect(() => {
@@ -78,23 +76,11 @@ export default function Stage13ClearPage() {
 
   // Toggle mute
   const toggleMute = () => {
-    const newMutedState = !isMuted
-    setIsMuted(newMutedState)
-
-    if (audioRef.current) {
-      audioRef.current.muted = newMutedState
-
-      // If unmuting and audio is loaded but not playing, try to play
-      if (!newMutedState && audioLoaded && audioRef.current.paused) {
-        audioRef.current.play().catch((e) => {
-          console.log("Audio play was prevented on unmute: ", e)
-        })
-      }
-    }
+    setIsMuted(!isMuted)
   }
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col">
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}
@@ -114,11 +100,14 @@ export default function Stage13ClearPage() {
             variant="outline"
             size="icon"
             className="bg-purple-800 border-yellow-600 text-white hover:bg-purple-700 h-8 w-8 sm:h-10 sm:w-10"
-            onClick={toggleMute}
+            onClick={() => {
+              toggleMute()
+              tryPlayAudio()
+            }}
           >
             {isMuted ? <VolumeX className="h-4 w-4 sm:h-5 sm:w-5" /> : <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />}
           </Button>
-          <Link href="/home">
+          <Link href="/home" onClick={tryPlayAudio}>
             <Button
               variant="outline"
               size="icon"
@@ -214,20 +203,20 @@ export default function Stage13ClearPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/pub">
+            <Link href="/pub" onClick={tryPlayAudio}>
               <Button className="bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 border border-amber-400 shadow-lg">
                 <Beer className="h-5 w-5" />
                 酒場で成果を報告
               </Button>
             </Link>
 
-            <Link href="/closet">
+            <Link href="/closet" onClick={tryPlayAudio}>
               <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg border border-blue-400 shadow-lg">
                 マップに戻る
               </Button>
             </Link>
 
-            <Link href="/closet/14">
+            <Link href="/closet/14" onClick={tryPlayAudio}>
               <Button className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 border border-green-400 shadow-lg">
                 次のステージへ
                 <ArrowRight className="h-5 w-5" />
