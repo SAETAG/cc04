@@ -1,13 +1,12 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Volume2, VolumeX, ArrowLeft, Home, Play } from "lucide-react"
+import { Volume2, VolumeX, ArrowLeft, Home } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"
-import { useToast } from "@/components/ui/use-toast"
 
 // Card data
 const infoCards = [
@@ -55,131 +54,54 @@ const infoCards = [
 ]
 
 export default function InformationPage() {
-  const [isMuted, setIsMuted] = useState(true) // デフォルトでミュート状態に変更
-  const [audioLoaded, setAudioLoaded] = useState(false)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [showPlayButton, setShowPlayButton] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [isMuted, setIsMuted] = useState(false)
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [rating, setRating] = useState(0)
   const [goodPoints, setGoodPoints] = useState("")
   const [improvementPoints, setImprovementPoints] = useState("")
-  const { toast } = useToast()
 
-  // iOS検出
-  const [isIOS, setIsIOS] = useState(false)
-
+  // Initialize audio - シンプルな方法で初期化
   useEffect(() => {
-    // iOSデバイスの検出
-    const userAgent = window.navigator.userAgent.toLowerCase()
-    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent)
-    setIsIOS(isIOSDevice)
+    const audioElement = new Audio("/information.mp3")
+    audioElement.loop = true
+    audioElement.volume = 0.7
+    setAudio(audioElement)
 
-    if (isIOSDevice) {
-      setShowPlayButton(true)
+    try {
+      audioElement.play().catch((error) => {
+        console.log("Auto-play was prevented:", error)
+      })
+    } catch (error) {
+      console.log("Audio play error:", error)
+    }
+
+    return () => {
+      audioElement.pause()
+      audioElement.src = ""
     }
   }, [])
 
-  // Initialize audio
+  // ミュート状態が変更されたときに適用
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        // Create audio element
-        const audio = new Audio()
+    if (audio) {
+      audio.muted = isMuted
 
-        // Set up event listeners
-        audio.addEventListener("canplaythrough", () => {
-          setAudioLoaded(true)
-          console.log("Audio loaded and ready to play")
-        })
-
-        audio.addEventListener("play", () => {
-          setIsPlaying(true)
-          console.log("Audio started playing")
-        })
-
-        audio.addEventListener("pause", () => {
-          setIsPlaying(false)
-          console.log("Audio paused")
-        })
-
-        audio.addEventListener("error", (e) => {
-          console.log("Audio loading error: ", e)
-          setAudioLoaded(false)
-        })
-
-        // Set properties
-        audio.src = "/information.mp3"
-        audio.loop = true
-        audio.volume = 0.7 // Set to 70% volume
-        audio.muted = isMuted
-        audio.preload = "auto" // 積極的にプリロード
-
-        // Store reference
-        audioRef.current = audio
-
-        // Clean up
-        return () => {
-          if (audioRef.current) {
-            audioRef.current.pause()
-            audioRef.current.src = ""
-            audioRef.current = null
-          }
+      // ミュート解除時に再生を試みる
+      if (!isMuted && audio.paused) {
+        try {
+          audio.play().catch((error) => {
+            console.log("Play on unmute failed:", error)
+          })
+        } catch (error) {
+          console.log("Play error:", error)
         }
-      } catch (error) {
-        console.error("Audio initialization error:", error)
       }
     }
-  }, [])
-
-  // 音声を再生する関数
-  const playAudio = () => {
-    if (audioRef.current && audioLoaded) {
-      // ミュート解除
-      setIsMuted(false)
-      if (audioRef.current) {
-        audioRef.current.muted = false
-      }
-
-      // 再生を試みる
-      const playPromise = audioRef.current.play()
-
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            console.log("Audio playback started successfully")
-            setIsPlaying(true)
-            setShowPlayButton(false)
-          })
-          .catch((error) => {
-            console.error("Audio playback failed:", error)
-            // iOSでの再生に失敗した場合、明示的な再生ボタンを表示
-            setShowPlayButton(true)
-
-            toast({
-              title: "音楽の再生に失敗しました",
-              description: "画面をタップしてから再度お試しください",
-              duration: 3000,
-            })
-          })
-      }
-    }
-  }
+  }, [isMuted, audio])
 
   // Toggle mute
   const toggleMute = () => {
-    if (!audioLoaded) return
-
-    const newMutedState = !isMuted
-    setIsMuted(newMutedState)
-
-    if (audioRef.current) {
-      audioRef.current.muted = newMutedState
-
-      // If unmuting, try to play
-      if (!newMutedState) {
-        playAudio()
-      }
-    }
+    setIsMuted(!isMuted)
   }
 
   // Reset feedback form when dialog closes
@@ -206,8 +128,21 @@ export default function InformationPage() {
     // For now, we'll rely on the DialogClose component
   }
 
+  // 画面タップで再生を試みる関数
+  const tryPlayAudio = () => {
+    if (audio && audio.paused && !isMuted) {
+      try {
+        audio.play().catch((error) => {
+          console.log("Play on screen tap failed:", error)
+        })
+      } catch (error) {
+        console.log("Play error:", error)
+      }
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-blue-950 flex flex-col">
+    <div className="min-h-screen bg-blue-950 flex flex-col" onClick={tryPlayAudio}>
       {/* Header */}
       <header className="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}
@@ -232,23 +167,11 @@ export default function InformationPage() {
         </div>
 
         <div className="flex gap-2">
-          {/* 明示的な再生ボタン (iOSデバイス用) */}
-          {showPlayButton && (
-            <Button
-              variant="outline"
-              size="icon"
-              className="bg-green-700 border-yellow-600 text-white hover:bg-green-600 h-8 w-8 sm:h-10 sm:w-10 animate-pulse"
-              onClick={playAudio}
-            >
-              <Play className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
-          )}
-
           {/* BGM on/off button */}
           <Button
             variant="outline"
             size="icon"
-            className={`${isMuted ? "bg-blue-800" : "bg-blue-700"} border-yellow-600 text-white hover:bg-blue-700 h-8 w-8 sm:h-10 sm:w-10 ${!isPlaying && audioLoaded && !isMuted ? "animate-pulse" : ""}`}
+            className="bg-blue-800 border-yellow-600 text-white hover:bg-blue-700 h-8 w-8 sm:h-10 sm:w-10"
             onClick={toggleMute}
           >
             {isMuted ? <VolumeX className="h-4 w-4 sm:h-5 sm:w-5" /> : <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />}
@@ -268,15 +191,7 @@ export default function InformationPage() {
       </header>
 
       {/* Main content */}
-      <main
-        className="flex-1 p-4 md:p-8"
-        onClick={() => {
-          // ページ内のどこかをクリックしたときにも音声再生を試みる（iOSのために）
-          if (isIOS && audioLoaded && !isPlaying) {
-            playAudio()
-          }
-        }}
-      >
+      <main className="flex-1 p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-bold text-yellow-300 mb-6 text-center drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]">
             クローゼット王国の案内
