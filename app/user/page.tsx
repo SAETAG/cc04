@@ -1,27 +1,23 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Volume2, VolumeX, ArrowLeft, Home, Edit2, Check } from "lucide-react"
+import { Volume2, VolumeX, ArrowLeft, Home, Package, Trophy, Star } from "lucide-react"
 
 export default function UserPage() {
   const [isMuted, setIsMuted] = useState(false)
   const [audioLoaded, setAudioLoaded] = useState(false)
-  const [isEditingName, setIsEditingName] = useState(false)
-  const [userName, setUserName] = useState("勇者名")
-  const [tempName, setTempName] = useState(userName)
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
 
-  // 職業、ボス、最終報酬の情報（実際のアプリではこれらはデータベースやローカルストレージから取得する）
+  // ユーザー情報（実際のアプリではこれらはデータベースやローカルストレージから取得する）
   const userInfo = {
+    name: "勇者名", // プレイヤーネームもDBから取得する形に変更
     job: "断捨離の剣士",
     boss: "リバウンドラゴン",
     reward: "クリスタルクローゼット",
+    exp: 1250, // 獲得経験ポイント数
+    clearedStages: "ステージ８", // クリア済ステージ
   }
 
   // Initialize audio
@@ -87,33 +83,6 @@ export default function UserPage() {
     }
   }
 
-  // 名前編集モードを開始
-  const startEditName = () => {
-    setIsEditingName(true)
-    setTempName(userName)
-    // 入力フィールドにフォーカスを当てる
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus()
-      }
-    }, 100)
-  }
-
-  // 名前を保存
-  const saveName = () => {
-    if (tempName.trim()) {
-      setUserName(tempName)
-    }
-    setIsEditingName(false)
-  }
-
-  // Enterキーで保存
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      saveName()
-    }
-  }
-
   return (
     <div className="min-h-screen bg-teal-950 flex flex-col">
       {/* Header */}
@@ -172,43 +141,10 @@ export default function UserPage() {
 
           {/* User info */}
           <div className="space-y-4">
-            {/* User name - editable */}
+            {/* User name - 編集不可に変更 */}
             <div className="flex items-center justify-between bg-teal-800 p-3 rounded-lg border border-teal-700">
               <span className="text-white font-medium">プレイヤーネーム：</span>
-              <div className="flex items-center gap-2">
-                {isEditingName ? (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      ref={inputRef}
-                      type="text"
-                      value={tempName}
-                      onChange={(e) => setTempName(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      className="bg-teal-700 border-teal-600 text-white w-32"
-                    />
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={saveName}
-                      className="h-8 w-8 text-green-400 hover:text-green-300 hover:bg-teal-700"
-                    >
-                      <Check className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="text-yellow-300 font-bold">{userName}</span>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={startEditName}
-                      className="h-8 w-8 text-teal-300 hover:text-teal-200 hover:bg-teal-700"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
+              <span className="text-yellow-300 font-bold">{userInfo.name}</span>
             </div>
 
             {/* Job */}
@@ -228,6 +164,34 @@ export default function UserPage() {
               <span className="text-white font-medium">最終報酬：</span>
               <span className="text-yellow-300 font-bold">{userInfo.reward}</span>
             </div>
+
+            {/* Experience Points */}
+            <div className="flex items-center justify-between bg-teal-800 p-3 rounded-lg border border-teal-700">
+              <div className="flex items-center gap-2">
+                <Star className="h-5 w-5 text-yellow-400" />
+                <span className="text-white font-medium">獲得経験ポイント数：</span>
+              </div>
+              <span className="text-yellow-300 font-bold">{userInfo.exp} EXP</span>
+            </div>
+
+            {/* Cleared Stages */}
+            <div className="flex items-center justify-between bg-teal-800 p-3 rounded-lg border border-teal-700">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-yellow-400" />
+                <span className="text-white font-medium">クリア済ステージ：</span>
+              </div>
+              <span className="text-yellow-300 font-bold">{userInfo.clearedStages}</span>
+            </div>
+          </div>
+
+          {/* Items Button */}
+          <div className="mt-8">
+            <Link href="/get_item">
+              <Button className="w-full bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white font-bold py-3 rounded-lg border border-yellow-500 shadow-md flex items-center justify-center gap-2">
+                <Package className="h-5 w-5" />
+                <span>これまで獲得したアイテム</span>
+              </Button>
+            </Link>
           </div>
         </div>
       </main>
