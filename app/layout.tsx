@@ -4,7 +4,7 @@ import "./globals.css"
 
 export const metadata: Metadata = {
   title: "Closet Chronicle",
-  description: "Closet Chronicle is the story of you and your closet.",
+  description: "This is the story of taking back your closet—and your life.",
   generator: "cc01",
 }
 
