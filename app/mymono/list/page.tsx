@@ -212,7 +212,7 @@ export default function MyMonoListPage() {
 
       <div className="container mx-auto px-4 py-16">
         <h1 className="text-3xl md:text-4xl font-bold text-amber-800 mb-8 text-center">
-          金の蔵 - コレクションギャラリー
+          マイコレクション - コレクションギャラリー
         </h1>
 
         {/* Trophy Section */}

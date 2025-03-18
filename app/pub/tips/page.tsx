@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Home, ArrowLeft, Plus, X, Upload, Sparkles } from "lucide-react"
+import { Home, ArrowLeft, Plus, X, Upload, Sparkles, BookOpen, Calendar, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -42,7 +42,7 @@ const initialTips: Tip[] = [
     id: "1",
     title: "収納の黄金法則",
     content:
-      "物は「種類」ではなく「場所」で分類すると探しやすくなります。例えば、リビングで使うものはリビングに、寝室で使うものは寝室に置くという考え方です。",
+      "物は「種類」ではなく「場所」で分類すると探しやすくなります。例えば、リビングで使うものはリビングに、寝室で使うものは寝室に置くという考え方です。\n\n「どこで使うか」を基準に整理することで、必要な時に必要なものがすぐに見つかるようになります。また、使用頻度によって収納場所を決めるのも効果的です。毎日使うものは手の届きやすい場所に、季節ものや特別な時だけ使うものは奥や高い場所に収納しましょう。",
     image: null,
     author: "賢者・アルカディア",
     date: "2023年12月15日",
@@ -51,7 +51,7 @@ const initialTips: Tip[] = [
     id: "2",
     title: "衣類の畳み方の秘術",
     content:
-      "衣類は立てて収納すると、何がどこにあるか一目でわかります。引き出しの中で服を横に重ねるのではなく、縦に並べて収納してみましょう。",
+      "衣類は立てて収納すると、何がどこにあるか一目でわかります。引き出しの中で服を横に重ねるのではなく、縦に並べて収納してみましょう。\n\n立てて収納する際のコツは、長方形になるように折りたたむことです。Tシャツなら袖を内側に折り、下から三つ折りにすると自立しやすくなります。これにより、引き出しを開けた時に全ての服が見渡せるようになり、服選びがスムーズになります。",
     image: null,
     author: "魔術師・メリウス",
     date: "2024年1月3日",
@@ -60,7 +60,7 @@ const initialTips: Tip[] = [
     id: "3",
     title: "小物整理の魔法",
     content:
-      "小物は「仕切り」を使うことで劇的に整理できます。引き出しの中に小さな箱や仕切りを入れて、アクセサリーや文房具などを種類ごとに分けて収納しましょう。",
+      "小物は「仕切り」を使うことで劇的に整理できます。引き出しの中に小さな箱や仕切りを入れて、アクセサリーや文房具などを種類ごとに分けて収納しましょう。\n\n100円ショップで売っている仕切りケースや、使わなくなった箱、お菓子の空き箱なども活用できます。同じ種類のものをまとめることで、必要な時にすぐに見つけることができます。また、透明なケースを使うと中身が一目でわかるので特におすすめです。",
     image: null,
     author: "学者・エレノア",
     date: "2024年2月20日",
@@ -81,7 +81,7 @@ export default function TipsPage() {
 
   // State for tips, flipped cards, and form
   const [tips, setTips] = useState<Tip[]>([])
-  const [flippedCardId, setFlippedCardId] = useState<string | null>(null)
+  const [flippedCards, setFlippedCards] = useState<Record<string, boolean>>({})
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [newTip, setNewTip] = useState({
     title: "",
@@ -110,11 +110,19 @@ export default function TipsPage() {
 
   // Handle card flip
   const handleCardFlip = (id: string) => {
-    if (flippedCardId === id) {
-      setFlippedCardId(null)
-    } else {
-      setFlippedCardId(id)
-    }
+    setFlippedCards((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }))
+  }
+
+  // Format content with paragraphs
+  const formatContent = (content: string) => {
+    return content.split("\n\n").map((paragraph, index) => (
+      <p key={index} className="text-sm mb-3">
+        {paragraph}
+      </p>
+    ))
   }
 
   // Handle form submission
@@ -165,15 +173,17 @@ export default function TipsPage() {
       return (
         <div
           key={i}
-          style={{
-            ...sparkleStyles,
-            top: `${top}%`,
-            left: `${left}%`,
-            width: `${size}px`,
-            height: `${size}px`,
-            animationDelay: `${delay}s`,
-            opacity: Math.random() * 0.7 + 0.3,
-          }}
+          style={
+            {
+              ...sparkleStyles,
+              top: `${top}%`,
+              left: `${left}%`,
+              width: `${size}px`,
+              height: `${size}px`,
+              animationDelay: `${delay}s`,
+              opacity: Math.random() * 0.7 + 0.3,
+            } as React.CSSProperties
+          }
         />
       )
     })
@@ -212,53 +222,67 @@ export default function TipsPage() {
       <div className="container mx-auto p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {tips.map((tip) => (
-            <div
-              key={tip.id}
-              className={`flip-card h-64 cursor-pointer ${flippedCardId === tip.id ? "flipped" : ""}`}
-              onClick={() => handleCardFlip(tip.id)}
-            >
-              <div className="flip-card-inner h-full">
-                {/* Front of Card (Magic Book Style) */}
-                <div className="flip-card-front bg-gradient-to-br from-indigo-900 to-purple-900 p-4 flex flex-col items-center justify-center border-2 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.3)] relative overflow-hidden">
-                  <div className="absolute inset-0 opacity-20 bg-[url('/placeholder.svg?height=200&width=200')] bg-center bg-no-repeat"></div>
-                  {generateSparkles(5)}
-                  <div className="z-10 text-center">
-                    <h3 className="text-xl font-bold text-yellow-300 mb-2">{tip.title}</h3>
-                    <div className="text-amber-200 text-sm">タップして開く</div>
+            <div key={tip.id} className="flip-card-container h-64">
+              <div
+                className={`flip-card ${flippedCards[tip.id] ? "flipped" : ""}`}
+                onClick={() => handleCardFlip(tip.id)}
+              >
+                {/* Card Cover (Initially visible) */}
+                <div className="flip-card-cover">
+                  <div className="bg-gradient-to-br from-indigo-900 to-purple-900 p-4 flex flex-col items-center justify-center border-2 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.3)] overflow-hidden rounded-md h-full">
+                    <div className="absolute inset-0 opacity-20 bg-[url('/placeholder.svg?height=200&width=200')] bg-center bg-no-repeat"></div>
+                    {generateSparkles(5)}
+                    <div className="z-10 text-center">
+                      <h3 className="text-xl font-bold text-yellow-300 mb-2">{tip.title}</h3>
+                      <div className="text-amber-200 text-sm flex items-center justify-center gap-1 mt-4">
+                        <BookOpen className="h-4 w-4" />
+                        <span>タップして開く</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Back of Card (Ancient Scroll Style) */}
-                <div className="flip-card-back bg-amber-100 text-amber-950 p-5 border-2 border-amber-800 overflow-hidden">
-                  <div className="h-full flex flex-col">
-                    <h3 className="text-lg font-bold text-amber-900 mb-2 text-center border-b border-amber-300 pb-2">
-                      {tip.title}
-                    </h3>
+                {/* Card Content (Revealed when flipped) */}
+                <div className="flip-card-content">
+                  <div className="bg-amber-100 text-amber-950 p-5 border-2 border-amber-800 overflow-hidden rounded-md h-full">
+                    <div className="h-full flex flex-col">
+                      <h3 className="text-lg font-bold text-amber-900 mb-3 text-center border-b-2 border-amber-300 pb-2">
+                        {tip.title}
+                      </h3>
 
-                    <div className="flex-grow overflow-y-auto scroll-unroll">
-                      <p className="text-sm mb-3">{tip.content}</p>
+                      <div className="flex-grow overflow-y-auto scroll-unroll pr-1">
+                        <div className="prose prose-sm prose-amber">{formatContent(tip.content)}</div>
 
-                      {tip.image ? (
-                        <div className="mt-2 flex justify-center">
-                          <Image
-                            src={tip.image || "/placeholder.svg"}
-                            alt={tip.title}
-                            width={200}
-                            height={120}
-                            className="rounded border border-amber-300 object-cover"
-                          />
+                        {tip.image ? (
+                          <div className="mt-3 flex justify-center">
+                            <div className="relative rounded-md border-2 border-amber-300 overflow-hidden w-full max-w-[200px] h-[120px]">
+                              <Image
+                                src={tip.image || "/placeholder.svg"}
+                                alt={tip.title}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-3 flex justify-center">
+                            <div className="text-6xl flex items-center justify-center h-20">🧑‍🏫</div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-auto pt-2 border-t-2 border-amber-300">
+                        <div className="flex justify-between items-center text-xs text-amber-800">
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            <span>{tip.author}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{tip.date}</span>
+                          </div>
                         </div>
-                      ) : (
-                        <div className="mt-2 flex justify-center">
-                          <div className="text-6xl flex items-center justify-center h-20">🧑‍🏫</div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-auto pt-2 text-right text-xs text-amber-800 border-t border-amber-300">
-                      <p>
-                        {tip.author} • {tip.date}
-                      </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -300,6 +324,7 @@ export default function TipsPage() {
                 placeholder="あなたの知恵を共有しましょう..."
                 className="bg-amber-950/50 border-amber-700 text-amber-100 min-h-[120px]"
               />
+              <p className="text-xs text-amber-400">ヒント: 段落を分けるには、空行を入れてください（Enterを2回押す）</p>
             </div>
 
             <div className="space-y-2">
@@ -352,6 +377,82 @@ export default function TipsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* CSS for card flipping */}
+      <style jsx global>{`
+        .flip-card-container {
+          perspective: 1000px;
+          cursor: pointer;
+        }
+        
+        .flip-card {
+          width: 100%;
+          height: 100%;
+          position: relative;
+          transition: transform 0.8s;
+          transform-style: preserve-3d;
+        }
+        
+        .flip-card.flipped {
+          transform: rotateY(180deg);
+        }
+        
+        .flip-card-cover,
+        .flip-card-content {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+        }
+        
+        .flip-card-content {
+          transform: rotateY(180deg);
+        }
+        
+        @keyframes sparkle {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+        
+        .scroll-unroll {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(180, 83, 9, 0.3) rgba(120, 53, 15, 0.1);
+        }
+        
+        .scroll-unroll::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        .scroll-unroll::-webkit-scrollbar-track {
+          background: rgba(120, 53, 15, 0.1);
+          border-radius: 3px;
+        }
+        
+        .scroll-unroll::-webkit-scrollbar-thumb {
+          background-color: rgba(180, 83, 9, 0.3);
+          border-radius: 3px;
+        }
+        
+        .prose-amber {
+          --tw-prose-body: #713f12;
+          --tw-prose-headings: #854d0e;
+          --tw-prose-lead: #854d0e;
+          --tw-prose-links: #854d0e;
+          --tw-prose-bold: #713f12;
+          --tw-prose-counters: #854d0e;
+          --tw-prose-bullets: #854d0e;
+          --tw-prose-hr: #eab308;
+          --tw-prose-quotes: #713f12;
+          --tw-prose-quote-borders: #eab308;
+          --tw-prose-captions: #854d0e;
+          --tw-prose-code: #713f12;
+          --tw-prose-pre-code: #e5e7eb;
+          --tw-prose-pre-bg: #1f2937;
+          --tw-prose-th-borders: #d97706;
+          --tw-prose-td-borders: #fcd34d;
+        }
+      `}</style>
     </main>
   )
 }

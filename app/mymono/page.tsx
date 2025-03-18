@@ -65,7 +65,7 @@ export default function MyMonoPage() {
       </div>
 
       <div className="w-full max-w-4xl bg-amber-50 rounded-lg shadow-2xl p-8 border-4 border-amber-300 flex flex-col items-center">
-        <h1 className="text-3xl md:text-4xl font-bold text-amber-800 mb-6 text-center">金の蔵</h1>
+        <h1 className="text-3xl md:text-4xl font-bold text-amber-800 mb-6 text-center">マイコレクション</h1>
 
         <div className="relative w-full h-40 md:h-60 mb-8">
           <div className="absolute inset-0 bg-[url('/placeholder.svg?height=300&width=500')] bg-center bg-cover opacity-20"></div>
@@ -82,7 +82,7 @@ export default function MyMonoPage() {
           onClick={handleEnterClick}
           className="bg-amber-600 hover:bg-amber-700 text-white px-8 py-4 text-xl rounded-lg shadow-lg transform transition-transform duration-200 hover:scale-105 border-2 border-amber-400"
         >
-          金の蔵へ入る
+          マイコレクションへ入る
         </Button>
       </div>
 
