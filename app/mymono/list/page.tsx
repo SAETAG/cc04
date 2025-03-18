@@ -12,25 +12,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Trash2, Edit } from "lucide-react"
 
-// Define the Item interface
+// Define the Item interface without category
 interface Item {
   id: number
   title: string
   image: string
   description: string
-  category: string
   date: string
 }
 
-//  // data for items
+// Updated mock data without category
 const mockItems = [
   {
     id: 1,
     title: "シルクブラウス",
     image: "/placeholder.svg?height=300&width=200",
     description: "春に購入したお気に入りのシルクブラウス。淡いピンク色で、どんなボトムスとも合わせやすい。",
-    category: "洋服",
     date: "2023-04-15",
   },
   {
@@ -38,7 +37,6 @@ const mockItems = [
     title: "デニムジャケット",
     image: "/placeholder.svg?height=300&width=200",
     description: "3年前に購入した定番のデニムジャケット。少し色落ちしてきたが、それがまた味になっている。",
-    category: "洋服",
     date: "2020-09-22",
   },
   {
@@ -46,7 +44,6 @@ const mockItems = [
     title: "ウールコート",
     image: "/placeholder.svg?height=300&width=200",
     description: "冬の定番アイテム。ダークグレーで、どんなコーディネートにも合わせやすい。",
-    category: "洋服",
     date: "2022-11-10",
   },
   {
@@ -54,7 +51,6 @@ const mockItems = [
     title: "カシミアセーター",
     image: "/placeholder.svg?height=300&width=200",
     description: "誕生日プレゼントでもらった高級カシミアセーター。とても暖かく、肌触りも最高。",
-    category: "洋服",
     date: "2023-01-05",
   },
   {
@@ -62,7 +58,6 @@ const mockItems = [
     title: "レザーバッグ",
     image: "/placeholder.svg?height=300&width=200",
     description: "就職祝いに自分へのご褒美として購入したレザーバッグ。年々味が出てきている。",
-    category: "アクセサリー",
     date: "2021-03-15",
   },
   {
@@ -70,7 +65,6 @@ const mockItems = [
     title: "サマードレス",
     image: "/placeholder.svg?height=300&width=200",
     description: "去年の夏に購入した花柄のドレス。海辺でのパーティーに着ていった思い出の一着。",
-    category: "洋服",
     date: "2022-07-08",
   },
 ]
@@ -89,16 +83,6 @@ const mockTrophyData = {
   },
 }
 
-// Update the Item interface to include optional fields
-interface Item {
-  id: number
-  title: string
-  image: string
-  description: string
-  category: string
-  date: string
-}
-
 export default function MyMonoListPage() {
   const [isMuted, setIsMuted] = useState(false)
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
@@ -106,18 +90,18 @@ export default function MyMonoListPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isTrophyDialogOpen, setIsTrophyDialogOpen] = useState(false)
   const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false)
+  const [isEditItemDialogOpen, setIsEditItemDialogOpen] = useState(false)
   const [items, setItems] = useState(mockItems)
   const [newItem, setNewItem] = useState<{
-    category: string
     title: string
     description: string
     image: string
   }>({
-    category: "",
     title: "",
     description: "",
     image: "/placeholder.svg?height=300&width=200",
   })
+  const [editItem, setEditItem] = useState<Item | null>(null)
 
   useEffect(() => {
     const audioElement = new Audio("/mymono.mp3")
@@ -153,18 +137,16 @@ export default function MyMonoListPage() {
     setIsDialogOpen(true)
   }
 
- const handleAddItem = () => {
+  const handleAddItem = () => {
     const newItemWithId: Item = {
       ...newItem,
       id: items.length + 1,
-      category: newItem.category || "新規追加",
       date: new Date().toISOString().split("T")[0],
     }
 
     setItems([...items, newItemWithId])
     setIsAddItemDialogOpen(false)
     setNewItem({
-      category: "",
       title: "",
       description: "",
       image: "/placeholder.svg?height=300&width=200",
@@ -187,6 +169,48 @@ export default function MyMonoListPage() {
 
       reader.readAsDataURL(file)
     }
+  }
+
+  // Handle edit image change
+  const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0] && editItem) {
+      const file = e.target.files[0]
+      const reader = new FileReader()
+
+      reader.onload = (event) => {
+        if (event.target && event.target.result) {
+          setEditItem({
+            ...editItem,
+            image: event.target.result as string,
+          })
+        }
+      }
+
+      reader.readAsDataURL(file)
+    }
+  }
+
+  // Delete item function
+  const handleDeleteItem = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent dialog from opening
+    setItems(items.filter((item) => item.id !== id))
+  }
+
+  // Open edit dialog
+  const handleOpenEditDialog = (item: Item, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent detail dialog from opening
+    setEditItem({ ...item })
+    setIsEditItemDialogOpen(true)
+  }
+
+  // Update item
+  const handleUpdateItem = () => {
+    if (!editItem) return
+
+    setItems(items.map((item) => (item.id === editItem.id ? editItem : item)))
+
+    setIsEditItemDialogOpen(false)
+    setEditItem(null)
   }
 
   return (
@@ -232,7 +256,7 @@ export default function MyMonoListPage() {
         {/* Add Item Button */}
         <div className="w-full max-w-6xl mx-auto mb-8 flex justify-end">
           <Button onClick={() => setIsAddItemDialogOpen(true)} className="bg-amber-600 hover:bg-amber-700 text-white">
-            ＋ 新しいアイテムを追加
+            ＋ 新しいコレクションを追加
           </Button>
         </div>
 
@@ -240,8 +264,8 @@ export default function MyMonoListPage() {
         <div className="w-full max-w-6xl mx-auto bg-amber-50 rounded-lg p-8 shadow-lg border-2 border-amber-200">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {items.map((item) => (
-              <div key={item.id} className="cursor-pointer" onClick={() => openItemDialog(item)}>
-                <div className="frame-container">
+              <div key={item.id} className="cursor-pointer relative">
+                <div className="frame-container" onClick={() => openItemDialog(item)}>
                   <div className="antique-frame">
                     <div className="frame-inner">
                       <Image
@@ -255,14 +279,35 @@ export default function MyMonoListPage() {
                   </div>
                   <div className="mt-2 text-center">
                     <h3 className="text-lg font-semibold text-amber-800">{item.title}</h3>
-                    <p className="text-sm text-amber-600">
-                      {item.category} • {item.date}
-                    </p>
+                    <p className="text-sm text-amber-600">{item.date}</p>
                   </div>
                   <Card className="mt-2 p-3 bg-amber-50 border border-amber-200 text-sm text-amber-700 h-24 overflow-hidden">
                     <p className="line-clamp-3">{item.description}</p>
                     <p className="text-right text-xs text-amber-500 mt-1">クリックで詳細表示</p>
                   </Card>
+                </div>
+
+                {/* Action buttons - absolute positioned over the card */}
+                <div className="absolute top-2 right-2 flex gap-2 z-10">
+                  {/* Edit button */}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 bg-amber-100 border-amber-300 hover:bg-amber-200"
+                    onClick={(e) => handleOpenEditDialog(item, e)}
+                  >
+                    <Edit className="h-4 w-4 text-amber-700" />
+                  </Button>
+
+                  {/* Delete button */}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 bg-amber-100 border-amber-300 hover:bg-red-200"
+                    onClick={(e) => handleDeleteItem(item.id, e)}
+                  >
+                    <Trash2 className="h-4 w-4 text-amber-700" />
+                  </Button>
                 </div>
               </div>
             ))}
@@ -270,6 +315,7 @@ export default function MyMonoListPage() {
         </div>
       </div>
 
+      {/* Item Detail Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         {selectedItem && (
           <DialogContent className="max-w-3xl bg-amber-50 border-4 border-amber-300">
@@ -294,9 +340,6 @@ export default function MyMonoListPage() {
                   <p className="text-amber-800 mb-4">{selectedItem.description}</p>
 
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="text-amber-600">カテゴリー:</div>
-                    <div className="text-amber-800">{selectedItem.category}</div>
-
                     <div className="text-amber-600">登録日:</div>
                     <div className="text-amber-800">{selectedItem.date}</div>
                   </div>
@@ -380,8 +423,10 @@ export default function MyMonoListPage() {
       <Dialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen}>
         <DialogContent className="max-w-2xl bg-amber-50 border-4 border-amber-300">
           <DialogHeader>
-            <DialogTitle className="text-2xl text-amber-800">新しいアイテムを追加</DialogTitle>
-            <DialogDescription className="text-amber-600">コレクションに新しいアイテムを追加します</DialogDescription>
+            <DialogTitle className="text-2xl text-amber-800">新しいコレクションを追加</DialogTitle>
+            <DialogDescription className="text-amber-600">
+              コレクションに新しいコレクションを追加します
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-6 py-4">
@@ -400,7 +445,7 @@ export default function MyMonoListPage() {
                 </div>
                 <div className="w-full">
                   <Label htmlFor="image" className="text-amber-700">
-                    アイテム写真
+                    コレクション写真
                   </Label>
                   <Input
                     id="image"
@@ -449,6 +494,82 @@ export default function MyMonoListPage() {
             </Button>
           </div>
         </DialogContent>
+      </Dialog>
+
+      {/* Edit Item Dialog */}
+      <Dialog open={isEditItemDialogOpen} onOpenChange={setIsEditItemDialogOpen}>
+        {editItem && (
+          <DialogContent className="max-w-2xl bg-amber-50 border-4 border-amber-300">
+            <DialogHeader>
+              <DialogTitle className="text-2xl text-amber-800">コレクションを編集</DialogTitle>
+            </DialogHeader>
+
+            <div className="grid gap-6 py-4">
+              <div className="flex flex-col md:flex-row gap-6">
+                <div className="md:w-1/2 flex flex-col items-center">
+                  <div className="antique-frame mb-4">
+                    <div className="frame-inner">
+                      <Image
+                        src={editItem.image || "/placeholder.svg"}
+                        alt={editItem.title}
+                        width={200}
+                        height={300}
+                        className="w-full h-auto object-cover"
+                      />
+                    </div>
+                  </div>
+                  <div className="w-full">
+                    <Label htmlFor="edit-image" className="text-amber-700">
+                      コレクション写真
+                    </Label>
+                    <Input
+                      id="edit-image"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleEditImageChange}
+                      className="bg-white border-amber-200"
+                    />
+                  </div>
+                </div>
+
+                <div className="md:w-1/2">
+                  <div className="grid gap-4">
+                    <div>
+                      <Label htmlFor="edit-title" className="text-amber-700">
+                        アイテム名
+                      </Label>
+                      <Input
+                        id="edit-title"
+                        value={editItem.title}
+                        onChange={(e) => setEditItem({ ...editItem, title: e.target.value })}
+                        className="bg-white border-amber-200"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-description" className="text-amber-700">
+                        説明
+                      </Label>
+                      <Textarea
+                        id="edit-description"
+                        value={editItem.description}
+                        onChange={(e) => setEditItem({ ...editItem, description: e.target.value })}
+                        className="bg-white border-amber-200 min-h-[150px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleUpdateItem}
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                disabled={!editItem.title || !editItem.description}
+              >
+                更新する
+              </Button>
+            </div>
+          </DialogContent>
+        )}
       </Dialog>
 
       <style jsx global>{`

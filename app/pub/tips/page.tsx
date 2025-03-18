@@ -2,15 +2,31 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Home, ArrowLeft, Plus, X, Upload, Sparkles, BookOpen, Calendar, User } from "lucide-react"
+import {
+  Home,
+  ArrowLeft,
+  Plus,
+  X,
+  Upload,
+  Sparkles,
+  BookOpen,
+  Calendar,
+  User,
+  Trash2,
+  Edit,
+  XCircle,
+  Volume2,
+  VolumeX,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // Define the tip type
 interface Tip {
@@ -67,6 +83,9 @@ const initialTips: Tip[] = [
   },
 ]
 
+// BGM URL - using the correct path to the file in public directory
+const BGM_URL = "/pub.mp3"
+
 export default function TipsPage() {
   // Add this style block inside the component, before the return statement
   const sparkleStyles = {
@@ -79,18 +98,25 @@ export default function TipsPage() {
     animation: "sparkle 2s infinite ease-in-out",
   }
 
-  // State for tips, flipped cards, and form
+  // State for tips, expanded card, and forms
   const [tips, setTips] = useState<Tip[]>([])
-  const [flippedCards, setFlippedCards] = useState<Record<string, boolean>>({})
+  const [expandedTip, setExpandedTip] = useState<Tip | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isUpdateFormOpen, setIsUpdateFormOpen] = useState(false)
   const [newTip, setNewTip] = useState({
     title: "",
     content: "",
     image: null as string | null,
   })
+  const [updateTip, setUpdateTip] = useState<Tip | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [updateImagePreview, setUpdateImagePreview] = useState<string | null>(null)
 
-  // Load tips from localStorage on mount
+  // Audio state
+  const [isSoundOn, setIsSoundOn] = useState(true)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  // Load tips and sound preference from localStorage on mount
   useEffect(() => {
     const savedTips = localStorage.getItem("pubTips")
     if (savedTips) {
@@ -99,7 +125,58 @@ export default function TipsPage() {
       setTips(initialTips)
       localStorage.setItem("pubTips", JSON.stringify(initialTips))
     }
+
+    // Load sound preference, default to ON if not set
+    const soundPreference = localStorage.getItem("pubSoundPreference")
+    if (soundPreference !== null) {
+      setIsSoundOn(soundPreference === "on")
+    } else {
+      // If no preference is stored, default to ON and save it
+      localStorage.setItem("pubSoundPreference", "on")
+    }
   }, [])
+
+  // Initialize audio
+  useEffect(() => {
+    // Create audio element
+    audioRef.current = new Audio(BGM_URL)
+    audioRef.current.loop = true
+    audioRef.current.volume = 0.5
+
+    // Clean up on unmount
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+    }
+  }, [])
+
+  // Handle sound toggle
+  useEffect(() => {
+    if (!audioRef.current) return
+
+    if (isSoundOn) {
+      // Play sound with a promise to handle autoplay restrictions
+      const playPromise = audioRef.current.play()
+
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.log("Autoplay prevented:", error)
+        })
+      }
+    } else {
+      audioRef.current.pause()
+    }
+
+    // Save preference
+    localStorage.setItem("pubSoundPreference", isSoundOn ? "on" : "off")
+  }, [isSoundOn])
+
+  // Toggle sound
+  const toggleSound = () => {
+    setIsSoundOn((prev) => !prev)
+  }
 
   // Save tips to localStorage when they change
   useEffect(() => {
@@ -108,18 +185,15 @@ export default function TipsPage() {
     }
   }, [tips])
 
-  // Handle card flip
-  const handleCardFlip = (id: string) => {
-    setFlippedCards((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }))
+  // Handle card click to expand
+  const handleCardClick = (tip: Tip) => {
+    setExpandedTip(tip)
   }
 
   // Format content with paragraphs
   const formatContent = (content: string) => {
     return content.split("\n\n").map((paragraph, index) => (
-      <p key={index} className="text-sm mb-3">
+      <p key={index} className={`${expandedTip ? "text-base mb-4" : "text-sm mb-3"}`}>
         {paragraph}
       </p>
     ))
@@ -148,6 +222,39 @@ export default function TipsPage() {
     setIsFormOpen(false)
   }
 
+  // Handle delete tip
+  const handleDeleteTip = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation() // Prevent card click when clicking delete button
+    setTips(tips.filter((tip) => tip.id !== id))
+    setExpandedTip(null) // Close expanded view if deleting the expanded tip
+  }
+
+  // Handle update tip - open update form
+  const handleUpdateTip = (e: React.MouseEvent, tip: Tip) => {
+    e.stopPropagation() // Prevent card click when clicking update button
+    setUpdateTip(tip)
+    setUpdateImagePreview(tip.image)
+    setIsUpdateFormOpen(true)
+  }
+
+  // Handle update form submission
+  const handleUpdateSubmit = () => {
+    if (!updateTip || !updateTip.title || !updateTip.content) return
+
+    const updatedTips = tips.map((tip) => (tip.id === updateTip.id ? updateTip : tip))
+
+    setTips(updatedTips)
+
+    // Update the expanded tip if it's the one being edited
+    if (expandedTip && expandedTip.id === updateTip.id) {
+      setExpandedTip(updateTip)
+    }
+
+    setUpdateTip(null)
+    setUpdateImagePreview(null)
+    setIsUpdateFormOpen(false)
+  }
+
   // Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -157,6 +264,20 @@ export default function TipsPage() {
         const result = reader.result as string
         setNewTip({ ...newTip, image: result })
         setImagePreview(result)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  // Handle update image upload
+  const handleUpdateImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file && updateTip) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const result = reader.result as string
+        setUpdateTip({ ...updateTip, image: result })
+        setUpdateImagePreview(result)
       }
       reader.readAsDataURL(file)
     }
@@ -204,12 +325,33 @@ export default function TipsPage() {
               <Home className="h-5 w-5 text-amber-200" />
             </Button>
           </Link>
+
+          {/* Sound Toggle Button */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={toggleSound}
+                  className={`bg-amber-950/50 border-amber-700 hover:bg-amber-800/50 ${isSoundOn ? "text-green-300" : "text-amber-200"}`}
+                >
+                  {isSoundOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>{isSoundOn ? "BGMをオフにする" : "BGMをオンにする"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
+
         <h1 className="text-2xl font-bold text-center text-amber-200 flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-yellow-300" />
           知恵の書
           <Sparkles className="h-6 w-6 text-yellow-300" />
         </h1>
+
         <Button
           onClick={() => setIsFormOpen(true)}
           className="bg-gradient-to-br from-purple-700 to-indigo-900 hover:from-purple-600 hover:to-indigo-800 text-white border border-purple-500"
@@ -222,75 +364,123 @@ export default function TipsPage() {
       <div className="container mx-auto p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {tips.map((tip) => (
-            <div key={tip.id} className="flip-card-container h-64">
-              <div
-                className={`flip-card ${flippedCards[tip.id] ? "flipped" : ""}`}
-                onClick={() => handleCardFlip(tip.id)}
-              >
-                {/* Card Cover (Initially visible) */}
-                <div className="flip-card-cover">
-                  <div className="bg-gradient-to-br from-indigo-900 to-purple-900 p-4 flex flex-col items-center justify-center border-2 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.3)] overflow-hidden rounded-md h-full">
-                    <div className="absolute inset-0 opacity-20 bg-[url('/placeholder.svg?height=200&width=200')] bg-center bg-no-repeat"></div>
-                    {generateSparkles(5)}
-                    <div className="z-10 text-center">
-                      <h3 className="text-xl font-bold text-yellow-300 mb-2">{tip.title}</h3>
-                      <div className="text-amber-200 text-sm flex items-center justify-center gap-1 mt-4">
-                        <BookOpen className="h-4 w-4" />
-                        <span>タップして開く</span>
-                      </div>
-                    </div>
+            <div key={tip.id} className="h-64 group">
+              <div className="bg-gradient-to-br from-indigo-900 to-purple-900 p-4 flex flex-col items-center justify-center border-2 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.3)] overflow-hidden rounded-md h-full transition-all duration-300 group-hover:shadow-[0_0_25px_rgba(234,179,8,0.6)] group-hover:translate-y-[-8px] relative">
+                <div className="absolute inset-0 opacity-20 bg-[url('/placeholder.svg?height=200&width=200')] bg-center bg-no-repeat"></div>
+                {generateSparkles(5)}
+                <div className="z-10 text-center">
+                  <h3 className="text-xl font-bold text-yellow-300 mb-2">{tip.title}</h3>
+                  <div className="mt-6">
+                    <Button
+                      onClick={() => handleCardClick(tip)}
+                      className="bg-amber-600 hover:bg-amber-500 text-white border border-amber-400 shadow-md hover:shadow-lg transition-all duration-200"
+                    >
+                      <BookOpen className="h-4 w-4 mr-2" />
+                      開く
+                    </Button>
                   </div>
                 </div>
 
-                {/* Card Content (Revealed when flipped) */}
-                <div className="flip-card-content">
-                  <div className="bg-amber-100 text-amber-950 p-5 border-2 border-amber-800 overflow-hidden rounded-md h-full">
-                    <div className="h-full flex flex-col">
-                      <h3 className="text-lg font-bold text-amber-900 mb-3 text-center border-b-2 border-amber-300 pb-2">
-                        {tip.title}
-                      </h3>
-
-                      <div className="flex-grow overflow-y-auto scroll-unroll pr-1">
-                        <div className="prose prose-sm prose-amber">{formatContent(tip.content)}</div>
-
-                        {tip.image ? (
-                          <div className="mt-3 flex justify-center">
-                            <div className="relative rounded-md border-2 border-amber-300 overflow-hidden w-full max-w-[200px] h-[120px]">
-                              <Image
-                                src={tip.image || "/placeholder.svg"}
-                                alt={tip.title}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="mt-3 flex justify-center">
-                            <div className="text-6xl flex items-center justify-center h-20">🧑‍🏫</div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="mt-auto pt-2 border-t-2 border-amber-300">
-                        <div className="flex justify-between items-center text-xs text-amber-800">
-                          <div className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            <span>{tip.author}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            <span>{tip.date}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                {/* Action Buttons */}
+                <div className="absolute bottom-3 right-3 flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => handleUpdateTip(e, tip)}
+                    className="bg-amber-800/40 hover:bg-amber-700/60 text-amber-200 h-8 w-8 p-0"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => handleDeleteTip(e, tip.id)}
+                    className="bg-red-900/40 hover:bg-red-800/60 text-red-200 h-8 w-8 p-0"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* Expanded Card Modal */}
+      {expandedTip && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-gradient-to-br from-amber-50 to-amber-100 text-amber-950 rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden relative animate-scaleIn">
+            <button
+              onClick={() => setExpandedTip(null)}
+              className="absolute top-3 right-3 text-amber-900 hover:text-amber-700 z-10"
+            >
+              <XCircle className="h-8 w-8" />
+            </button>
+
+            <div className="p-6 flex flex-col h-full max-h-[90vh]">
+              <h2 className="text-2xl font-bold text-amber-900 mb-4 text-center border-b-2 border-amber-300 pb-3">
+                {expandedTip.title}
+              </h2>
+
+              <div className="overflow-y-auto flex-grow pr-2 scroll-unroll">
+                <div className="prose prose-amber max-w-none">{formatContent(expandedTip.content)}</div>
+
+                {expandedTip.image ? (
+                  <div className="mt-6 flex justify-center">
+                    <div className="relative rounded-md border-2 border-amber-300 overflow-hidden w-full max-w-md h-[240px]">
+                      <Image
+                        src={expandedTip.image || "/placeholder.svg"}
+                        alt={expandedTip.title}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-6 flex justify-center">
+                    <div className="text-8xl flex items-center justify-center h-32">🧑‍🏫</div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 pt-3 border-t-2 border-amber-300 flex justify-between items-center">
+                <div className="text-sm text-amber-800">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <User className="h-4 w-4" />
+                      <span>{expandedTip.author}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>{expandedTip.date}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={(e) => handleUpdateTip(e, expandedTip)}
+                    className="bg-amber-200 hover:bg-amber-300 border-amber-400 text-amber-900"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    更新
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={(e) => handleDeleteTip(e, expandedTip.id)}
+                    className="bg-red-100 hover:bg-red-200 border-red-300 text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    削除
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Tip Form Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -378,41 +568,130 @@ export default function TipsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* CSS for card flipping */}
+      {/* Update Tip Form Dialog */}
+      <Dialog open={isUpdateFormOpen} onOpenChange={setIsUpdateFormOpen}>
+        <DialogContent className="bg-gradient-to-br from-amber-900 to-amber-950 border border-amber-700 text-amber-100 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-amber-200 text-xl">知恵を更新</DialogTitle>
+          </DialogHeader>
+
+          {updateTip && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="update-title" className="text-amber-200">
+                  タイトル
+                </Label>
+                <Input
+                  id="update-title"
+                  value={updateTip.title}
+                  onChange={(e) => setUpdateTip({ ...updateTip, title: e.target.value })}
+                  placeholder="知恵のタイトルを入力..."
+                  className="bg-amber-950/50 border-amber-700 text-amber-100"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="update-content" className="text-amber-200">
+                  内容
+                </Label>
+                <Textarea
+                  id="update-content"
+                  value={updateTip.content}
+                  onChange={(e) => setUpdateTip({ ...updateTip, content: e.target.value })}
+                  placeholder="あなたの知恵を共有しましょう..."
+                  className="bg-amber-950/50 border-amber-700 text-amber-100 min-h-[120px]"
+                />
+                <p className="text-xs text-amber-400">
+                  ヒント: 段落を分けるには、空行を入れてください（Enterを2回押す）
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="update-image" className="text-amber-200">
+                  画像（任意）
+                </Label>
+                <div className="flex items-center gap-2">
+                  <label className="flex-1">
+                    <div className="bg-amber-950/50 border border-amber-700 rounded-md p-2 text-center cursor-pointer hover:bg-amber-800/50 transition-colors">
+                      <Upload className="h-5 w-5 mx-auto mb-1 text-amber-300" />
+                      <span className="text-sm">画像をアップロード</span>
+                    </div>
+                    <input
+                      type="file"
+                      id="update-image"
+                      accept="image/*"
+                      onChange={handleUpdateImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {updateImagePreview && (
+                    <div className="relative h-16 w-16 border border-amber-700 rounded overflow-hidden">
+                      <Image
+                        src={updateImagePreview || "/placeholder.svg"}
+                        alt="Preview"
+                        fill
+                        className="object-cover"
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setUpdateImagePreview(null)
+                          setUpdateTip({ ...updateTip, image: null })
+                        }}
+                        className="absolute top-0 right-0 bg-red-600 rounded-full p-0.5"
+                      >
+                        <X className="h-3 w-3 text-white" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsUpdateFormOpen(false)}
+              className="border-amber-700 text-amber-200 hover:bg-amber-800/50"
+            >
+              キャンセル
+            </Button>
+            <Button
+              onClick={handleUpdateSubmit}
+              disabled={!updateTip || !updateTip.title || !updateTip.content}
+              className="bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-600 hover:to-indigo-700 text-white"
+            >
+              更新する
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* CSS for animations and styling */}
       <style jsx global>{`
-        .flip-card-container {
-          perspective: 1000px;
-          cursor: pointer;
-        }
-        
-        .flip-card {
-          width: 100%;
-          height: 100%;
-          position: relative;
-          transition: transform 0.8s;
-          transform-style: preserve-3d;
-        }
-        
-        .flip-card.flipped {
-          transform: rotateY(180deg);
-        }
-        
-        .flip-card-cover,
-        .flip-card-content {
-          position: absolute;
-          width: 100%;
-          height: 100%;
-          -webkit-backface-visibility: hidden;
-          backface-visibility: hidden;
-        }
-        
-        .flip-card-content {
-          transform: rotateY(180deg);
-        }
-        
         @keyframes sparkle {
           0%, 100% { opacity: 0.3; transform: scale(1); }
           50% { opacity: 1; transform: scale(1.2); }
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes scaleIn {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out forwards;
+        }
+        
+        .animate-scaleIn {
+          animation: scaleIn 0.3s ease-out forwards;
         }
         
         .scroll-unroll {
