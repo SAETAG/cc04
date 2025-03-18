@@ -1,8 +1,10 @@
 "use client"
 
+import { useRef } from "react"
+
 import type React from "react"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -54,7 +56,7 @@ const clothingEmojis = [
 
 export default function ClosetPage() {
   const [isMuted, setIsMuted] = useState(false)
-  const [audioLoaded, setAudioLoaded] = useState(false)
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [showWelcome, setShowWelcome] = useState(true)
   const [selectedStage, setSelectedStage] = useState<number | null>(null)
   const [showChat, setShowChat] = useState(false)
@@ -62,56 +64,48 @@ export default function ClosetPage() {
   const [chatMessages, setChatMessages] = useState([
     { sender: "mo-chan", text: "クローゼット王国での冒険はどうですか？何か質問があればどうぞ！" },
   ])
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const chatInputRef = useRef<HTMLInputElement>(null)
   const chatEndRef = useRef<HTMLDivElement | null>(null)
   const router = useRouter()
 
-  // Initialize audio
+  // シンプルな音声初期化
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        // Create audio element
-        const audio = new Audio()
+    const audioElement = new Audio("/closet.mp3")
+    audioElement.loop = true
+    audioElement.volume = 0.7
+    setAudio(audioElement)
 
-        // Set up event listeners
-        audio.addEventListener("canplaythrough", () => {
-          setAudioLoaded(true)
-          if (!isMuted) {
-            audio.play().catch((e) => {
-              console.log("Audio play was prevented: ", e)
-              // This is often due to browser autoplay policies
-            })
-          }
-        })
+    try {
+      audioElement.play().catch((error) => {
+        console.log("Auto-play was prevented:", error)
+      })
+    } catch (error) {
+      console.log("Audio play error:", error)
+    }
 
-        audio.addEventListener("error", (e) => {
-          console.log("Audio loading error: ", e)
-          setAudioLoaded(false)
-        })
-
-        // Set properties
-        audio.src = "/closet.mp3"
-        audio.loop = true
-        audio.volume = 0.7 // Set to 70% volume
-        audio.muted = isMuted
-
-        // Store reference
-        audioRef.current = audio
-
-        // Clean up
-        return () => {
-          if (audioRef.current) {
-            audioRef.current.pause()
-            audioRef.current.src = ""
-            audioRef.current = null
-          }
-        }
-      } catch (error) {
-        console.error("Audio initialization error:", error)
-      }
+    return () => {
+      audioElement.pause()
+      audioElement.src = ""
     }
   }, [])
+
+  // ミュート状態が変更されたときに適用
+  useEffect(() => {
+    if (audio) {
+      audio.muted = isMuted
+
+      // ミュート解除時に再生を試みる
+      if (!isMuted && audio.paused) {
+        try {
+          audio.play().catch((error) => {
+            console.log("Play on unmute failed:", error)
+          })
+        } catch (error) {
+          console.log("Play error:", error)
+        }
+      }
+    }
+  }, [isMuted, audio])
 
   // Scroll to bottom of chat when messages change
   useEffect(() => {
@@ -122,17 +116,18 @@ export default function ClosetPage() {
 
   // Toggle mute
   const toggleMute = () => {
-    const newMutedState = !isMuted
-    setIsMuted(newMutedState)
+    setIsMuted(!isMuted)
+  }
 
-    if (audioRef.current) {
-      audioRef.current.muted = newMutedState
-
-      // If unmuting and audio is loaded but not playing, try to play
-      if (!newMutedState && audioLoaded && audioRef.current.paused) {
-        audioRef.current.play().catch((e) => {
-          console.log("Audio play was prevented on unmute: ", e)
+  // 画面タップで再生を試みる関数
+  const tryPlayAudio = () => {
+    if (audio && audio.paused && !isMuted) {
+      try {
+        audio.play().catch((error) => {
+          console.log("Play on screen tap failed:", error)
         })
+      } catch (error) {
+        console.log("Play error:", error)
       }
     }
   }
@@ -140,6 +135,9 @@ export default function ClosetPage() {
   // Close welcome message
   const closeWelcome = () => {
     setShowWelcome(false)
+
+    // ウェルカムメッセージを閉じる時に音声再生を試みる（ユーザーインタラクション）
+    tryPlayAudio()
   }
 
   // Handle stage selection
@@ -161,6 +159,9 @@ export default function ClosetPage() {
         chatInputRef.current?.focus()
       }, 300)
     }
+
+    // チャットを開く/閉じる時に音声再生を試みる（ユーザーインタラクション）
+    tryPlayAudio()
   }
 
   // Close chat bubble
@@ -208,7 +209,7 @@ export default function ClosetPage() {
   }
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col">
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}

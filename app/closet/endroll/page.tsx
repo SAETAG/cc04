@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Home, Zap, Volume2, VolumeX, Crown, Skull, Flame, Shield, Swords } from "lucide-react"
 import Image from "next/image"
@@ -9,8 +9,7 @@ import { Button } from "@/components/ui/button"
 export default function Endroll() {
   const router = useRouter()
   const [isMuted, setIsMuted] = useState(false)
-  const [volume, setVolume] = useState(0.7)
-  const audioRef = useRef<HTMLAudioElement>(null)
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
 
   // アニメーションシーケンスの状態管理
   const [currentScene, setCurrentScene] = useState(0)
@@ -53,20 +52,61 @@ export default function Endroll() {
     "モオォォォォォ―。",
   ]
 
-  // 音声のミュート切り替え
-  const toggleMute = () => {
-    if (audioRef.current) {
-      const newMutedState = !isMuted
-      setIsMuted(newMutedState)
-      audioRef.current.muted = newMutedState
+  // シンプルな音声初期化
+  useEffect(() => {
+    const audioElement = new Audio("/endroll.mp3")
+    audioElement.loop = true
+    audioElement.volume = 0.7
+    setAudio(audioElement)
 
-      // まだ再生されていなければ再生を試みる
-      if (audioRef.current.paused) {
-        audioRef.current.play().catch((error) => {
-          console.error("Audio playback failed:", error)
-        })
+    try {
+      audioElement.play().catch((error) => {
+        console.log("Auto-play was prevented:", error)
+      })
+    } catch (error) {
+      console.log("Audio play error:", error)
+    }
+
+    return () => {
+      audioElement.pause()
+      audioElement.src = ""
+    }
+  }, [])
+
+  // ミュート状態が変更されたときに適用
+  useEffect(() => {
+    if (audio) {
+      audio.muted = isMuted
+
+      // ミュート解除時に再生を試みる
+      if (!isMuted && audio.paused) {
+        try {
+          audio.play().catch((error) => {
+            console.log("Play on unmute failed:", error)
+          })
+        } catch (error) {
+          console.log("Play error:", error)
+        }
       }
     }
+  }, [isMuted, audio])
+
+  // 画面タップで再生を試みる関数
+  const tryPlayAudio = () => {
+    if (audio && audio.paused && !isMuted) {
+      try {
+        audio.play().catch((error) => {
+          console.log("Play on screen tap failed:", error)
+        })
+      } catch (error) {
+        console.log("Play error:", error)
+      }
+    }
+  }
+
+  // 音声のミュート切り替え
+  const toggleMute = () => {
+    setIsMuted(!isMuted)
   }
 
   // アニメーションシーケンスのタイミング制御
@@ -187,9 +227,9 @@ export default function Endroll() {
   // handleCrownReceive関数を修正して、正しいパスに遷移するようにします
   const handleCrownReceive = () => {
     // 現在の音楽を停止
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.src = ""
+    if (audio) {
+      audio.pause()
+      audio.src = ""
     }
 
     // 正しいパスに修正: /closet/endroll/crown
@@ -198,9 +238,9 @@ export default function Endroll() {
 
   const handleBackToHome = () => {
     try {
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current.src = ""
+      if (audio) {
+        audio.pause()
+        audio.src = ""
       }
     } catch (error) {
       console.error("Error stopping audio:", error)
@@ -210,18 +250,10 @@ export default function Endroll() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 overflow-hidden relative">
-      {/* HTMLオーディオ要素 */}
-      <audio
-        ref={audioRef}
-        src="/endroll.mp3"
-        loop
-        preload="auto"
-        className="hidden"
-        onError={(e) => console.error("Audio error:", e)}
-        autoPlay
-      />
-
+    <div
+      className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 overflow-hidden relative"
+      onClick={tryPlayAudio}
+    >
       {/* 背景 */}
       <div className="absolute inset-0 z-0">
         {currentScene >= 2 && (
@@ -278,7 +310,7 @@ export default function Endroll() {
               </div>
             </div>
 
-            {/* ボスキャラクター */}
+            {/* ボスキャラクタ�� */}
             <div className="absolute top-1/4 right-1/4 transform translate-x-1/2 -translate-y-1/2">
               <div className="relative">
                 <div className={`text-8xl ${bossHealth === 0 ? "animate-boss-death" : "animate-boss-idle"}`}>👿</div>
