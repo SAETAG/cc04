@@ -12,13 +12,12 @@ import { Volume2, VolumeX, ArrowLeft, Home, Upload, Camera } from "lucide-react"
 
 export default function Stage1BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
-  const [audioLoaded, setAudioLoaded] = useState(false)
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [problems, setProblems] = useState("")
   const [ideals, setIdeals] = useState("")
   const [isMobile, setIsMobile] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -29,67 +28,61 @@ export default function Stage1BattlePage() {
     }
   }, [])
 
-  // Initialize audio
+  // シンプルな音声初期化
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        // Create audio element
-        const audio = new Audio()
+    const audioElement = new Audio("/stepfight_1.mp3")
+    audioElement.loop = true
+    audioElement.volume = 0.7
+    setAudio(audioElement)
 
-        // Set up event listeners
-        audio.addEventListener("canplaythrough", () => {
-          setAudioLoaded(true)
-          if (!isMuted) {
-            audio.play().catch((e) => {
-              console.log("Audio play was prevented: ", e)
-              // This is often due to browser autoplay policies
-            })
-          }
-        })
+    try {
+      audioElement.play().catch((error) => {
+        console.log("Auto-play was prevented:", error)
+      })
+    } catch (error) {
+      console.log("Audio play error:", error)
+    }
 
-        audio.addEventListener("error", (e) => {
-          console.log("Audio loading error: ", e)
-          setAudioLoaded(false)
-        })
-
-        // Set properties
-        audio.src = "/stepfight_1.mp3" // Updated to use stepfight_1.mp3
-        audio.loop = true
-        audio.volume = 0.7 // Set to 70% volume
-        audio.muted = isMuted
-
-        // Store reference
-        audioRef.current = audio
-
-        // Clean up
-        return () => {
-          if (audioRef.current) {
-            audioRef.current.pause()
-            audioRef.current.src = ""
-            audioRef.current = null
-          }
-        }
-      } catch (error) {
-        console.error("Audio initialization error:", error)
-      }
+    return () => {
+      audioElement.pause()
+      audioElement.src = ""
     }
   }, [])
 
-  // Toggle mute
-  const toggleMute = () => {
-    const newMutedState = !isMuted
-    setIsMuted(newMutedState)
+  // ミュート状態が変更されたときに適用
+  useEffect(() => {
+    if (audio) {
+      audio.muted = isMuted
 
-    if (audioRef.current) {
-      audioRef.current.muted = newMutedState
-
-      // If unmuting and audio is loaded but not playing, try to play
-      if (!newMutedState && audioLoaded && audioRef.current.paused) {
-        audioRef.current.play().catch((e) => {
-          console.log("Audio play was prevented on unmute: ", e)
-        })
+      // ミュート解除時に再生を試みる
+      if (!isMuted && audio.paused) {
+        try {
+          audio.play().catch((error) => {
+            console.log("Play on unmute failed:", error)
+          })
+        } catch (error) {
+          console.log("Play error:", error)
+        }
       }
     }
+  }, [isMuted, audio])
+
+  // 画面タップで再生を試みる関数
+  const tryPlayAudio = () => {
+    if (audio && audio.paused && !isMuted) {
+      try {
+        audio.play().catch((error) => {
+          console.log("Play on screen tap failed:", error)
+        })
+      } catch (error) {
+        console.log("Play error:", error)
+      }
+    }
+  }
+
+  // Toggle mute
+  const toggleMute = () => {
+    setIsMuted(!isMuted)
   }
 
   // Handle file upload
@@ -102,11 +95,17 @@ export default function Stage1BattlePage() {
       }
       reader.readAsDataURL(file)
     }
+
+    // ファイル選択時に音声再生を試みる（ユーザーインタラクション）
+    tryPlayAudio()
   }
 
   // Trigger file input click
   const triggerFileInput = () => {
     fileInputRef.current?.click()
+
+    // ファイルアップロードボタンクリック時に音声再生を試みる（ユーザーインタラクション）
+    tryPlayAudio()
   }
 
   // Open camera on mobile devices
@@ -116,6 +115,9 @@ export default function Stage1BattlePage() {
       fileInputRef.current.capture = "environment"
       fileInputRef.current.click()
     }
+
+    // カメラボタンクリック時に音声再生を試みる（ユーザーインタラクション）
+    tryPlayAudio()
   }
 
   // Save record to database and navigate to clear page
@@ -144,7 +146,7 @@ export default function Stage1BattlePage() {
   }
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col">
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}
@@ -257,6 +259,7 @@ export default function Stage1BattlePage() {
               onChange={(e) => setProblems(e.target.value)}
               placeholder="あなたの不満点を入力してください..."
               className="w-full h-32 bg-teal-800 border-teal-600 text-white placeholder:text-teal-400"
+              onClick={tryPlayAudio}
             />
           </div>
 
@@ -276,6 +279,7 @@ export default function Stage1BattlePage() {
               onChange={(e) => setIdeals(e.target.value)}
               placeholder="あなたの理想を入力してください..."
               className="w-full h-32 bg-teal-800 border-teal-600 text-white placeholder:text-teal-400"
+              onClick={tryPlayAudio}
             />
           </div>
 
