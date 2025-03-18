@@ -93,6 +93,9 @@ export default function InformationPage() {
         // Store reference
         audioRef.current = audio
 
+        // Don't try to autoplay on component mount
+        // We'll play audio only after user interaction
+
         // Clean up
         return () => {
           if (audioRef.current) {
@@ -115,11 +118,15 @@ export default function InformationPage() {
     if (audioRef.current) {
       audioRef.current.muted = newMutedState
 
-      // If unmuting and audio is loaded but not playing, try to play
-      if (!newMutedState && audioLoaded && audioRef.current.paused) {
+      // If unmuting, try to play regardless of previous state
+      // This ensures first user interaction can trigger playback on mobile
+      if (!newMutedState && audioLoaded) {
         audioRef.current.play().catch((e) => {
           console.log("Audio play was prevented on unmute: ", e)
         })
+      } else if (newMutedState && !audioRef.current.paused) {
+        // If we're muting and audio is playing, we don't need to pause
+        // Just muting is enough, and this preserves the play state
       }
     }
   }
@@ -178,7 +185,7 @@ export default function InformationPage() {
           <Button
             variant="outline"
             size="icon"
-            className="bg-blue-800 border-yellow-600 text-white hover:bg-blue-700 h-8 w-8 sm:h-10 sm:w-10"
+            className={`${isMuted ? "bg-blue-800" : "bg-blue-700"} border-yellow-600 text-white hover:bg-blue-700 h-8 w-8 sm:h-10 sm:w-10 ${!audioLoaded || (audioRef.current && audioRef.current.paused && !isMuted) ? "animate-pulse" : ""}`}
             onClick={toggleMute}
           >
             {isMuted ? <VolumeX className="h-4 w-4 sm:h-5 sm:w-5" /> : <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />}
@@ -285,10 +292,6 @@ export default function InformationPage() {
                           </button>
                         </DialogClose>
                       </div>
-
-                      <p className="text-gray-600 text-sm text-center">
-                        ※App Storeでの評価もぜひよろしくお願いします！
-                      </p>
                     </div>
                   ) : (
                     <div className="space-y-4 animate-in fade-in duration-500">
