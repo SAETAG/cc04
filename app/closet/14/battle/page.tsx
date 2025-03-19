@@ -10,65 +10,103 @@ export default function Battle14() {
   const router = useRouter()
   const [isMuted, setIsMuted] = useState(false)
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
+  const [audioLoaded, setAudioLoaded] = useState(false)
   const [checkedItems, setCheckedItems] = useState({
     madeLabels: false,
     attachedLabels: false,
     sharedWithFamily: false,
   })
 
-  // Initialize audio
+  // シンプルな音声初期化 - ループなし（一回だけ再生）
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
-        const newAudio = new Audio("/stepfight_14.mp3")
-        newAudio.loop = true
-        newAudio.volume = 0.7
-        setAudio(newAudio)
+        const audioElement = new Audio("/stepfight_14.mp3")
+        // ループをオフにして一回だけ再生するように設定
+        audioElement.loop = false
+        audioElement.volume = 0.7
+        audioElement.preload = "auto"
+
+        // オーディオの読み込み状態を監視
+        audioElement.addEventListener("canplaythrough", () => {
+          setAudioLoaded(true)
+          console.log("Audio loaded and ready to play")
+        })
+
+        audioElement.addEventListener("error", (e) => {
+          console.error("Audio loading error:", e)
+        })
+
+        setAudio(audioElement)
+
+        // クリーンアップ関数 - コンポーネントがアンマウントされたときに確実に音声を停止
+        return () => {
+          audioElement.pause()
+          audioElement.src = ""
+          setAudio(null)
+        }
       } catch (error) {
         console.error("Audio initialization error:", error)
       }
     }
-
-    // Cleanup function
-    return () => {
-      if (audio) {
-        audio.pause()
-        setAudio(null)
-      }
-    }
   }, [])
 
-  // Update mute state when it changes
+  // ページ表示後に一度だけ再生を試みる
+  useEffect(() => {
+    if (audio && audioLoaded) {
+      // モバイルでは自動再生できないことが多いが、一応試みる
+      const playPromise = audio.play()
+
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.log("Initial auto-play was prevented:", error)
+          // エラーは想定内なので何もしない
+        })
+      }
+    }
+  }, [audio, audioLoaded])
+
+  // ミュート状態が変更されたときに適用
   useEffect(() => {
     if (audio) {
       audio.muted = isMuted
+
+      // ミュート解除時に再生を試みる
+      if (!isMuted && audio.paused && audioLoaded) {
+        const playPromise = audio.play()
+
+        if (playPromise !== undefined) {
+          playPromise.catch((error) => {
+            console.log("Play on unmute failed:", error)
+          })
+        }
+      }
     }
-  }, [isMuted, audio])
+  }, [isMuted, audio, audioLoaded])
 
-  // Try to play audio - call this on user interactions
+  // 画面タップで再生を試みる関数
   const tryPlayAudio = () => {
-    if (audio && !audio.paused) return // Already playing
+    if (audio && audio.paused && !isMuted && audioLoaded) {
+      // ユーザーインタラクションの中で再生を試みる（モバイルで重要）
+      const playPromise = audio.play()
 
-    if (audio && !isMuted) {
-      audio.play().catch((error) => {
-        console.log("Audio play failed:", error)
-      })
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.log("Play on screen tap failed:", error)
+        })
+      }
     }
   }
 
   const toggleMute = () => {
     setIsMuted(!isMuted)
-    if (audio) {
-      if (isMuted) {
-        // If we're unmuting, try to play
-        tryPlayAudio()
-      }
-    }
   }
 
   const handleComplete = () => {
+    // 次のページに移動する前に確実に音声を停止
     if (audio) {
       audio.pause()
+      audio.currentTime = 0
     }
     router.push("/closet/14/clear")
   }
@@ -96,11 +134,18 @@ export default function Battle14() {
         <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-yellow-500"></div>
 
         <div className="flex items-center gap-2">
-          <Link href="/closet/14" onClick={tryPlayAudio}>
+          <Link href="/closet/14">
             <Button
               variant="outline"
               size="icon"
               className="bg-purple-800 border-yellow-600 text-white hover:bg-purple-700 h-8 w-8 sm:h-10 sm:w-10"
+              onClick={() => {
+                // リンククリック時に音声を停止
+                if (audio) {
+                  audio.pause()
+                  audio.currentTime = 0
+                }
+              }}
             >
               <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
@@ -121,11 +166,18 @@ export default function Battle14() {
           >
             {isMuted ? <VolumeX className="h-4 w-4 sm:h-5 sm:w-5" /> : <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />}
           </Button>
-          <Link href="/home" onClick={tryPlayAudio}>
+          <Link href="/home">
             <Button
               variant="outline"
               size="icon"
               className="bg-purple-800 border-yellow-600 text-white hover:bg-purple-700 h-8 w-8 sm:h-10 sm:w-10"
+              onClick={() => {
+                // リンククリック時に音声を停止
+                if (audio) {
+                  audio.pause()
+                  audio.currentTime = 0
+                }
+              }}
             >
               <Home className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
@@ -227,10 +279,7 @@ export default function Battle14() {
           {/* Complete button */}
           <div className="flex justify-center mt-6">
             <Button
-              onClick={() => {
-                tryPlayAudio()
-                handleComplete()
-              }}
+              onClick={handleComplete}
               disabled={!anyChecked}
               className={`bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold py-2 px-6 ${!anyChecked ? "opacity-50 cursor-not-allowed" : ""}`}
             >

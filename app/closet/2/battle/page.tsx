@@ -10,24 +10,30 @@ import { Volume2, VolumeX, ArrowLeft, Home, CheckCircle2 } from "lucide-react"
 export default function Stage2BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
+  const [audioLoaded, setAudioLoaded] = useState(false)
   const [boxesReady, setBoxesReady] = useState([false, false, false, false])
   const [isSaving, setIsSaving] = useState(false)
   const router = useRouter()
 
   // シンプルな音声初期化
   useEffect(() => {
+    // モバイルでの自動再生制限に対応するため、ユーザーインタラクション前にオーディオを準備するだけにする
     const audioElement = new Audio("/stepfight_2.mp3")
     audioElement.loop = true
     audioElement.volume = 0.7
-    setAudio(audioElement)
+    audioElement.preload = "auto"
 
-    try {
-      audioElement.play().catch((error) => {
-        console.log("Auto-play was prevented:", error)
-      })
-    } catch (error) {
-      console.log("Audio play error:", error)
-    }
+    // オーディオの読み込み状態を監視
+    audioElement.addEventListener("canplaythrough", () => {
+      setAudioLoaded(true)
+      console.log("Audio loaded and ready to play")
+    })
+
+    audioElement.addEventListener("error", (e) => {
+      console.error("Audio loading error:", e)
+    })
+
+    setAudio(audioElement)
 
     return () => {
       audioElement.pause()
@@ -35,33 +41,49 @@ export default function Stage2BattlePage() {
     }
   }, [])
 
+  // ページ表示後に一度だけ再生を試みる
+  useEffect(() => {
+    if (audio && audioLoaded) {
+      // モバイルでは自動再生できないことが多いが、一応試みる
+      const playPromise = audio.play()
+
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.log("Initial auto-play was prevented:", error)
+          // エラーは想定内なので何もしない
+        })
+      }
+    }
+  }, [audio, audioLoaded])
+
   // ミュート状態が変更されたときに適用
   useEffect(() => {
     if (audio) {
       audio.muted = isMuted
 
       // ミュート解除時に再生を試みる
-      if (!isMuted && audio.paused) {
-        try {
-          audio.play().catch((error) => {
+      if (!isMuted && audio.paused && audioLoaded) {
+        const playPromise = audio.play()
+
+        if (playPromise !== undefined) {
+          playPromise.catch((error) => {
             console.log("Play on unmute failed:", error)
           })
-        } catch (error) {
-          console.log("Play error:", error)
         }
       }
     }
-  }, [isMuted, audio])
+  }, [isMuted, audio, audioLoaded])
 
   // 画面タップで再生を試みる関数
   const tryPlayAudio = () => {
-    if (audio && audio.paused && !isMuted) {
-      try {
-        audio.play().catch((error) => {
+    if (audio && audio.paused && !isMuted && audioLoaded) {
+      // ユーザーインタラクションの中で再生を試みる（モバイルで重要）
+      const playPromise = audio.play()
+
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
           console.log("Play on screen tap failed:", error)
         })
-      } catch (error) {
-        console.log("Play error:", error)
       }
     }
   }

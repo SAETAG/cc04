@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Volume2, VolumeX, ArrowLeft, Home } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
 
 // Card data
 const infoCards = [
@@ -59,6 +60,9 @@ export default function InformationPage() {
   const [rating, setRating] = useState(0)
   const [goodPoints, setGoodPoints] = useState("")
   const [improvementPoints, setImprovementPoints] = useState("")
+  const [unnecessaryFeatures, setUnnecessaryFeatures] = useState<string[]>([])
+  const [desiredFeatures, setDesiredFeatures] = useState<string[]>([])
+  const [otherFeedback, setOtherFeedback] = useState("")
 
   // Initialize audio - シンプルな方法で初期化
   useEffect(() => {
@@ -109,6 +113,9 @@ export default function InformationPage() {
     setRating(0)
     setGoodPoints("")
     setImprovementPoints("")
+    setUnnecessaryFeatures([])
+    setDesiredFeatures([])
+    setOtherFeedback("")
   }
 
   // Handle star rating click
@@ -118,7 +125,12 @@ export default function InformationPage() {
 
   // Handle form submission
   const handleSubmitFeedback = () => {
-    console.log("Feedback submitted:", { rating, goodPoints, improvementPoints })
+    console.log("Feedback submitted:", {
+      rating,
+      unnecessaryFeatures,
+      desiredFeatures,
+      otherFeedback,
+    })
     // Here you would typically send this data to your backend
 
     // Reset form after submission
@@ -210,7 +222,7 @@ export default function InformationPage() {
                   </Card>
                 </DialogTrigger>
                 <DialogContent
-                  className={`${card.id === "feedback" ? "bg-gradient-to-b from-white to-pink-100" : "bg-gradient-to-b from-blue-900 to-blue-950"} border-2 border-yellow-500 max-w-md w-full`}
+                  className={`${card.id === "feedback" ? "bg-gradient-to-b from-white to-pink-100" : "bg-gradient-to-b from-blue-900 to-blue-950"} border-2 border-yellow-500 max-w-md w-full overflow-y-auto max-h-[90vh]`}
                 >
                   <DialogHeader>
                     <DialogTitle
@@ -238,28 +250,97 @@ export default function InformationPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <label htmlFor="goodPoints" className="block text-purple-800 font-medium">
-                          良いと思った点をお聞かせください
+                        <label className="block text-purple-800 font-medium">
+                          1. 無くてもいいと思った機能（複数選択可、1つ以上必須）
                         </label>
-                        <textarea
-                          id="goodPoints"
-                          value={goodPoints}
-                          onChange={(e) => setGoodPoints(e.target.value)}
-                          className="w-full h-24 p-2 border border-pink-300 rounded-md bg-white text-gray-800 focus:outline-none focus:border-purple-400"
-                          placeholder="良いと思った点をお聞かせください"
-                        />
+                        <div className="space-y-2">
+                          {[
+                            { id: "feature1", label: "酒場の成果報告機能" },
+                            { id: "feature2", label: "酒場の整理収納知識の共有機能" },
+                            { id: "feature3", label: "マイコレクション（持ち物の写真一覧表示）の機能" },
+                            { id: "feature4", label: "モーちゃん（AI）機能" },
+                            { id: "feature5", label: "クローゼット王国の片づけ14ステップ（もっと少ステップでいい）" },
+                            { id: "feature6", label: "特になし" },
+                          ].map((feature) => (
+                            <div key={feature.id} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={feature.id}
+                                checked={unnecessaryFeatures.includes(feature.label)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    if (feature.label === "特になし") {
+                                      setUnnecessaryFeatures(["特になし"])
+                                    } else {
+                                      setUnnecessaryFeatures((prev) =>
+                                        prev.includes("特になし")
+                                          ? [...prev.filter((f) => f !== "特になし"), feature.label]
+                                          : [...prev, feature.label],
+                                      )
+                                    }
+                                  } else {
+                                    setUnnecessaryFeatures((prev) => prev.filter((f) => f !== feature.label))
+                                  }
+                                }}
+                              />
+                              <label htmlFor={feature.id} className="text-gray-700 cursor-pointer">
+                                {feature.label}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
                       </div>
 
                       <div className="space-y-2">
-                        <label htmlFor="improvementPoints" className="block text-purple-800 font-medium">
-                          直してほしいところをお聞かせください
+                        <label className="block text-purple-800 font-medium">
+                          2. 追加して欲しいと思う機能（複数選択可、1つ以上必須）
+                        </label>
+                        <div className="space-y-2">
+                          {[
+                            { id: "desired1", label: "もっと気軽にできるサブクエスト（掃除機がけなど）機能" },
+                            { id: "desired2", label: "パズルなどのゲーム機能" },
+                            { id: "desired3", label: "レアアイテムやランキング機能" },
+                            { id: "desired4", label: "プロの整理収納アドバイザーにチャットで相談できる機能" },
+                            { id: "desired5", label: "クローゼット以外の整理収納支援機能" },
+                            { id: "desired6", label: "特になし" },
+                          ].map((feature) => (
+                            <div key={feature.id} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={feature.id}
+                                checked={desiredFeatures.includes(feature.label)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    if (feature.label === "特になし") {
+                                      setDesiredFeatures(["特になし"])
+                                    } else {
+                                      setDesiredFeatures((prev) =>
+                                        prev.includes("特になし")
+                                          ? [...prev.filter((f) => f !== "特になし"), feature.label]
+                                          : [...prev, feature.label],
+                                      )
+                                    }
+                                  } else {
+                                    setDesiredFeatures((prev) => prev.filter((f) => f !== feature.label))
+                                  }
+                                }}
+                              />
+                              <label htmlFor={feature.id} className="text-gray-700 cursor-pointer">
+                                {feature.label}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label htmlFor="otherFeedback" className="block text-purple-800 font-medium">
+                          3. その他、良かった点や今後改善を期待する点を自由にお書きください
                         </label>
                         <textarea
-                          id="improvementPoints"
-                          value={improvementPoints}
-                          onChange={(e) => setImprovementPoints(e.target.value)}
+                          id="otherFeedback"
+                          value={otherFeedback}
+                          onChange={(e) => setOtherFeedback(e.target.value)}
                           className="w-full h-24 p-2 border border-pink-300 rounded-md bg-white text-gray-800 focus:outline-none focus:border-purple-400"
-                          placeholder="直してほしいところをお聞かせください"
+                          placeholder="任意入力"
                         />
                       </div>
 
@@ -272,7 +353,8 @@ export default function InformationPage() {
                         <DialogClose asChild>
                           <button
                             onClick={handleSubmitFeedback}
-                            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-md hover:from-purple-600 hover:to-pink-600 transition-colors"
+                            disabled={unnecessaryFeatures.length === 0 || desiredFeatures.length === 0}
+                            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-md hover:from-purple-600 hover:to-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             送信する
                           </button>

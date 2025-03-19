@@ -106,7 +106,13 @@ export default function Endroll() {
 
   // 音声のミュート切り替え
   const toggleMute = () => {
-    setIsMuted(!isMuted)
+    const newMutedState = !isMuted
+    setIsMuted(newMutedState)
+
+    // 直接audioのmuted状態も更新する
+    if (audio) {
+      audio.muted = newMutedState
+    }
   }
 
   // アニメーションシーケンスのタイミング制御

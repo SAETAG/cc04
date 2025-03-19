@@ -20,6 +20,10 @@ export default function Stage5BattlePage() {
   const [goodPoints, setGoodPoints] = useState("")
   const [improvementPoints, setImprovementPoints] = useState("")
 
+  const [unnecessaryFeatures, setUnnecessaryFeatures] = useState<string[]>([])
+  const [desiredFeatures, setDesiredFeatures] = useState<string[]>([])
+  const [otherFeedback, setOtherFeedback] = useState("")
+
   // シンプルな音声初期化
   useEffect(() => {
     const audioElement = new Audio("/stepfight_5.mp3")
@@ -125,8 +129,9 @@ export default function Stage5BattlePage() {
       // In a real app, you would save the feedback to your database here
       console.log("Saving feedback:", {
         rating,
-        goodPoints,
-        improvementPoints,
+        unnecessaryFeatures,
+        desiredFeatures,
+        otherFeedback,
       })
 
       // Navigate to clear page
@@ -206,7 +211,7 @@ export default function Stage5BattlePage() {
 
           {/* Discard checklist */}
           <div className="mb-8">
-            <h3 className="text-xl font-bold text-yellow-300 mb-4">虚無の箱へ入れるリスト</h3>
+            <h3 className="text-xl font-bold text-yellow-300 mb-4">虚無の箱へ入れる��スト</h3>
 
             <div className="space-y-4">
               <div className="flex items-start space-x-4 bg-teal-800 bg-opacity-50 p-4 rounded-lg border border-teal-700">
@@ -413,7 +418,7 @@ export default function Stage5BattlePage() {
         </div>
         {showFeedback && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="max-w-md w-full bg-gradient-to-b from-white to-pink-100 rounded-lg border-2 border-yellow-500 shadow-lg p-6 animate-in fade-in duration-300">
+            <div className="max-w-md w-full bg-gradient-to-b from-white to-pink-100 rounded-lg border-2 border-yellow-500 shadow-lg p-6 animate-in fade-in duration-300 overflow-y-auto max-h-[90vh]">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-purple-800">アプリに関するフィードバックのお願い</h3>
                 <button onClick={skipFeedback} className="text-gray-500 hover:text-gray-700" aria-label="Close">
@@ -446,30 +451,98 @@ export default function Stage5BattlePage() {
               </div>
 
               <div className="mb-4">
-                <label htmlFor="goodPoints" className="block text-purple-800 mb-2">
-                  良いところ
+                <label className="block text-purple-800 mb-2">
+                  1. 無くてもいいと思った機能（複数選択可、1つ以上必須）
                 </label>
-                <textarea
-                  id="goodPoints"
-                  value={goodPoints}
-                  onChange={(e) => setGoodPoints(e.target.value)}
-                  className="w-full p-2 rounded bg-white text-gray-800 border border-pink-300 focus:border-purple-400 focus:outline-none"
-                  rows={3}
-                  placeholder="良いと思った点をお聞かせください"
-                />
+                <div className="space-y-2">
+                  {[
+                    { id: "feature1", label: "酒場の成果報告機能" },
+                    { id: "feature2", label: "酒場の整理収納知識の共有機能" },
+                    { id: "feature3", label: "マイコレクション（持ち物の写真一覧表示）の機能" },
+                    { id: "feature4", label: "モーちゃん（AI）機能" },
+                    { id: "feature5", label: "クローゼット王国の片づけ14ステップ（もっと少ステップでいい）" },
+                    { id: "feature6", label: "特になし" },
+                  ].map((feature) => (
+                    <div key={feature.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={feature.id}
+                        checked={unnecessaryFeatures.includes(feature.label)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            if (feature.label === "特になし") {
+                              setUnnecessaryFeatures(["特になし"])
+                            } else {
+                              setUnnecessaryFeatures((prev) =>
+                                prev.includes("特になし")
+                                  ? [...prev.filter((f) => f !== "特になし"), feature.label]
+                                  : [...prev, feature.label],
+                              )
+                            }
+                          } else {
+                            setUnnecessaryFeatures((prev) => prev.filter((f) => f !== feature.label))
+                          }
+                        }}
+                      />
+                      <label htmlFor={feature.id} className="text-gray-700 cursor-pointer">
+                        {feature.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-purple-800 mb-2">
+                  2. 追加して欲しいと思う機能（複数選択可、1つ以上必須）
+                </label>
+                <div className="space-y-2">
+                  {[
+                    { id: "desired1", label: "もっと気軽にできるサブクエスト（掃除機がけなど）機能" },
+                    { id: "desired2", label: "パズルなどのゲーム機能" },
+                    { id: "desired3", label: "レアアイテムやランキング機能" },
+                    { id: "desired4", label: "プロの整理収納アドバイザーにチャットで相談できる機能" },
+                    { id: "desired5", label: "クローゼット以外の整理収納支援機能" },
+                    { id: "desired6", label: "特になし" },
+                  ].map((feature) => (
+                    <div key={feature.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={feature.id}
+                        checked={desiredFeatures.includes(feature.label)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            if (feature.label === "特になし") {
+                              setDesiredFeatures(["特になし"])
+                            } else {
+                              setDesiredFeatures((prev) =>
+                                prev.includes("特になし")
+                                  ? [...prev.filter((f) => f !== "特になし"), feature.label]
+                                  : [...prev, feature.label],
+                              )
+                            }
+                          } else {
+                            setDesiredFeatures((prev) => prev.filter((f) => f !== feature.label))
+                          }
+                        }}
+                      />
+                      <label htmlFor={feature.id} className="text-gray-700 cursor-pointer">
+                        {feature.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="mb-6">
-                <label htmlFor="improvementPoints" className="block text-purple-800 mb-2">
-                  直してほしいところ
+                <label htmlFor="otherFeedback" className="block text-purple-800 mb-2">
+                  3. その他、良かった点や今後改善を期待する点を自由にお書きください
                 </label>
                 <textarea
-                  id="improvementPoints"
-                  value={improvementPoints}
-                  onChange={(e) => setImprovementPoints(e.target.value)}
+                  id="otherFeedback"
+                  value={otherFeedback}
+                  onChange={(e) => setOtherFeedback(e.target.value)}
                   className="w-full p-2 rounded bg-white text-gray-800 border border-pink-300 focus:border-purple-400 focus:outline-none"
                   rows={3}
-                  placeholder="改善点をお聞かせください"
+                  placeholder="任意入力"
                 />
               </div>
 
@@ -479,7 +552,8 @@ export default function Stage5BattlePage() {
 
               <button
                 onClick={submitFeedback}
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-2 px-4 rounded"
+                disabled={unnecessaryFeatures.length === 0 || desiredFeatures.length === 0}
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 送信する
               </button>

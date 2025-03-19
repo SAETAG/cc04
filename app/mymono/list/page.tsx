@@ -318,7 +318,7 @@ export default function MyMonoListPage() {
       {/* Item Detail Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         {selectedItem && (
-          <DialogContent className="max-w-3xl bg-amber-50 border-4 border-amber-300">
+          <DialogContent className="max-w-3xl bg-amber-50 border-4 border-amber-300 max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-2xl text-amber-800">{selectedItem.title}</DialogTitle>
             </DialogHeader>
@@ -352,7 +352,7 @@ export default function MyMonoListPage() {
 
       {/* Trophy Dialog */}
       <Dialog open={isTrophyDialogOpen} onOpenChange={setIsTrophyDialogOpen}>
-        <DialogContent className="max-w-4xl bg-amber-50 border-4 border-amber-300">
+        <DialogContent className="max-w-4xl bg-amber-50 border-4 border-amber-300 max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl text-amber-800">片づけトロフィー</DialogTitle>
             <DialogDescription className="text-amber-600">クローゼット整理のビフォー＆アフター</DialogDescription>
@@ -421,7 +421,7 @@ export default function MyMonoListPage() {
 
       {/* Add Item Dialog */}
       <Dialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen}>
-        <DialogContent className="max-w-2xl bg-amber-50 border-4 border-amber-300">
+        <DialogContent className="max-w-2xl bg-amber-50 border-4 border-amber-300 max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl text-amber-800">新しいコレクションを追加</DialogTitle>
             <DialogDescription className="text-amber-600">
@@ -499,7 +499,7 @@ export default function MyMonoListPage() {
       {/* Edit Item Dialog */}
       <Dialog open={isEditItemDialogOpen} onOpenChange={setIsEditItemDialogOpen}>
         {editItem && (
-          <DialogContent className="max-w-2xl bg-amber-50 border-4 border-amber-300">
+          <DialogContent className="max-w-2xl bg-amber-50 border-4 border-amber-300 max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-2xl text-amber-800">コレクションを編集</DialogTitle>
             </DialogHeader>

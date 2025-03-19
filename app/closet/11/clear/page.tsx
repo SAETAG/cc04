@@ -8,16 +8,28 @@ import { Volume2, VolumeX, Home, Trophy, ArrowRight, Shirt, Star, Beer } from "l
 export default function Stage11ClearPage() {
   const [isMuted, setIsMuted] = useState(false)
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
+  const [audioLoaded, setAudioLoaded] = useState(false)
   const [showConfetti, setShowConfetti] = useState(true)
 
-  // Initialize audio
+  // シンプルな音声初期化
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
         const audioElement = new Audio("/stepclear.mp3")
         audioElement.loop = true
         audioElement.volume = 0.7
-        audioElement.muted = isMuted
+        audioElement.preload = "auto"
+
+        // オーディオの読み込み状態を監視
+        audioElement.addEventListener("canplaythrough", () => {
+          setAudioLoaded(true)
+          console.log("Audio loaded and ready to play")
+        })
+
+        audioElement.addEventListener("error", (e) => {
+          console.error("Audio loading error:", e)
+        })
+
         setAudio(audioElement)
 
         return () => {
@@ -31,26 +43,56 @@ export default function Stage11ClearPage() {
     }
   }, [])
 
-  // Try to play audio - call this on user interactions
+  // ページ表示後に一度だけ再生を試みる
+  useEffect(() => {
+    if (audio && audioLoaded) {
+      // モバイルでは自動再生できないことが多いが、一応試みる
+      const playPromise = audio.play()
+
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.log("Initial auto-play was prevented:", error)
+          // エラーは想定内なので何もしない
+        })
+      }
+    }
+  }, [audio, audioLoaded])
+
+  // ミュート状態が変更されたときに適用
+  useEffect(() => {
+    if (audio) {
+      audio.muted = isMuted
+
+      // ミュート解除時に再生を試みる
+      if (!isMuted && audio.paused && audioLoaded) {
+        const playPromise = audio.play()
+
+        if (playPromise !== undefined) {
+          playPromise.catch((error) => {
+            console.log("Play on unmute failed:", error)
+          })
+        }
+      }
+    }
+  }, [isMuted, audio, audioLoaded])
+
+  // 画面タップで再生を試みる関数
   const tryPlayAudio = () => {
-    if (audio && !isMuted) {
-      audio.play().catch((error) => {
-        console.log("Audio play prevented:", error)
-      })
+    if (audio && audio.paused && !isMuted && audioLoaded) {
+      // ユーザーインタラクションの中で再生を試みる（モバイルで重要）
+      const playPromise = audio.play()
+
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.log("Play on screen tap failed:", error)
+        })
+      }
     }
   }
 
   // Toggle mute
   const toggleMute = () => {
-    const newMutedState = !isMuted
-    setIsMuted(newMutedState)
-
-    if (audio) {
-      audio.muted = newMutedState
-      if (!newMutedState) {
-        tryPlayAudio()
-      }
-    }
+    setIsMuted(!isMuted)
   }
 
   // Hide confetti after some time
@@ -83,14 +125,11 @@ export default function Stage11ClearPage() {
             variant="outline"
             size="icon"
             className="bg-purple-800 border-yellow-600 text-white hover:bg-purple-700 h-8 w-8 sm:h-10 sm:w-10"
-            onClick={() => {
-              toggleMute()
-              tryPlayAudio()
-            }}
+            onClick={toggleMute}
           >
             {isMuted ? <VolumeX className="h-4 w-4 sm:h-5 sm:w-5" /> : <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />}
           </Button>
-          <Link href="/home" onClick={tryPlayAudio}>
+          <Link href="/home">
             <Button
               variant="outline"
               size="icon"
@@ -184,20 +223,20 @@ export default function Stage11ClearPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/pub" onClick={tryPlayAudio}>
+            <Link href="/pub">
               <Button className="bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 border border-amber-400 shadow-lg">
                 <Beer className="h-5 w-5" />
                 酒場で成果を報告
               </Button>
             </Link>
 
-            <Link href="/closet" onClick={tryPlayAudio}>
+            <Link href="/closet">
               <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg border border-blue-400 shadow-lg">
                 マップに戻る
               </Button>
             </Link>
 
-            <Link href="/closet/12" onClick={tryPlayAudio}>
+            <Link href="/closet/12">
               <Button className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 border border-green-400 shadow-lg">
                 次のステージへ
                 <ArrowRight className="h-5 w-5" />

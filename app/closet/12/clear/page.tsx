@@ -1,61 +1,99 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Volume2, VolumeX, Home, Trophy, ArrowRight, Star, Scan, Beer } from "lucide-react"
 
 export default function Stage12ClearPage() {
   const [isMuted, setIsMuted] = useState(false)
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [audioLoaded, setAudioLoaded] = useState(false)
   const [showConfetti, setShowConfetti] = useState(true)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
 
-  // Initialize audio
+  // シンプルな音声初期化
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
-        // Create audio element
-        const audio = new Audio()
+        const audioElement = new Audio("/stepclear.mp3")
+        audioElement.loop = true
+        audioElement.volume = 0.7
+        audioElement.preload = "auto"
 
-        // Set up event listeners
-        audio.addEventListener("canplaythrough", () => {
+        // オーディオの読み込み状態を監視
+        audioElement.addEventListener("canplaythrough", () => {
           setAudioLoaded(true)
-          if (!isMuted) {
-            audio.play().catch((e) => {
-              console.log("Audio play was prevented: ", e)
-              // This is often due to browser autoplay policies
-            })
-          }
+          console.log("Audio loaded and ready to play")
         })
 
-        audio.addEventListener("error", (e) => {
-          console.log("Audio loading error: ", e)
-          setAudioLoaded(false)
+        audioElement.addEventListener("error", (e) => {
+          console.error("Audio loading error:", e)
         })
 
-        // Set properties
-        audio.src = "/stepclear.mp3"
-        audio.loop = true
-        audio.volume = 0.7 // Set to 70% volume
-        audio.muted = isMuted
+        setAudio(audioElement)
 
-        // Store reference
-        audioRef.current = audio
-
-        // Clean up
         return () => {
-          if (audioRef.current) {
-            audioRef.current.pause()
-            audioRef.current.src = ""
-            audioRef.current = null
-          }
+          audioElement.pause()
+          audioElement.src = ""
+          setAudio(null)
         }
       } catch (error) {
         console.error("Audio initialization error:", error)
       }
     }
   }, [])
+
+  // ページ表示後に一度だけ再生を試みる
+  useEffect(() => {
+    if (audio && audioLoaded) {
+      // モバイルでは自動再生できないことが多いが、一応試みる
+      const playPromise = audio.play()
+
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.log("Initial auto-play was prevented:", error)
+          // エラーは想定内なので何もしない
+        })
+      }
+    }
+  }, [audio, audioLoaded])
+
+  // ミュート状態が変更されたときに適用
+  useEffect(() => {
+    if (audio) {
+      audio.muted = isMuted
+
+      // ミュート解除時に再生を試みる
+      if (!isMuted && audio.paused && audioLoaded) {
+        const playPromise = audio.play()
+
+        if (playPromise !== undefined) {
+          playPromise.catch((error) => {
+            console.log("Play on unmute failed:", error)
+          })
+        }
+      }
+    }
+  }, [isMuted, audio, audioLoaded])
+
+  // 画面タップで再生を試みる関数
+  const tryPlayAudio = () => {
+    if (audio && audio.paused && !isMuted && audioLoaded) {
+      // ユーザーインタラクションの中で再生を試みる（モバイルで重要）
+      const playPromise = audio.play()
+
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.log("Play on screen tap failed:", error)
+        })
+      }
+    }
+  }
+
+  // Toggle mute
+  const toggleMute = () => {
+    setIsMuted(!isMuted)
+  }
 
   // Hide confetti after some time
   useEffect(() => {
@@ -66,25 +104,8 @@ export default function Stage12ClearPage() {
     return () => clearTimeout(timer)
   }, [])
 
-  // Toggle mute
-  const toggleMute = () => {
-    const newMutedState = !isMuted
-    setIsMuted(newMutedState)
-
-    if (audioRef.current) {
-      audioRef.current.muted = newMutedState
-
-      // If unmuting and audio is loaded but not playing, try to play
-      if (!newMutedState && audioLoaded && audioRef.current.paused) {
-        audioRef.current.play().catch((e) => {
-          console.log("Audio play was prevented on unmute: ", e)
-        })
-      }
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col">
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}
