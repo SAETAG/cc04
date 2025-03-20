@@ -196,16 +196,16 @@ export default function Stage12Page() {
           {/* Stage title and description */}
           <div className="text-center mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold text-yellow-300 mb-4 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]">
-              封印の間　～完成の証～
+              最終確認の間　～何度でも何度でも～
             </h1>
             <p className="text-white text-base sm:text-lg">
-              「すべてのモノが収まった… ここで '完成' の証を残し、次の世代へ継承せよ！」
+              「すべてのモノが収まった… これで最後！汝のクローゼットを今、再び、確認せよ！」
             </p>
           </div>
 
           {/* Camera icon */}
           <div className="flex justify-center mb-8">
-            <div className="text-7xl animate-pulse">📸</div>
+            <div className="text-7xl animate-pulse">👉</div>
           </div>
 
           {/* Action buttons */}

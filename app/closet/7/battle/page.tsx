@@ -5,40 +5,67 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Volume2, VolumeX, ArrowLeft, Home, Check } from "lucide-react"
+import { Volume2, VolumeX, ArrowLeft, Home, Check, CheckCircle2 } from "lucide-react"
 
 export default function Stage7BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [rackLength, setRackLength] = useState("")
   const [hangerCount, setHangerCount] = useState<number | null>(null)
+  const [checksCompleted, setChecksCompleted] = useState([false, false, false])
   const [isSaving, setIsSaving] = useState(false)
+  const [isClient, setIsClient] = useState(false)
   const router = useRouter()
 
-  // シンプルな音声初期化
+  // クライアントサイドでのみ実行されるようにする
   useEffect(() => {
-    const audioElement = new Audio("/stepfight_7.mp3")
-    audioElement.loop = true
-    audioElement.volume = 0.7
-    setAudio(audioElement)
+    setIsClient(true)
+  }, [])
+
+  // シンプルな音声初期化 - クライアントサイドでのみ実行
+  useEffect(() => {
+    if (!isClient) return
 
     try {
-      audioElement.play().catch((error) => {
-        console.log("Auto-play was prevented:", error)
-      })
-    } catch (error) {
-      console.log("Audio play error:", error)
-    }
+      const audioElement = new Audio("/stepfight_7.mp3")
+      audioElement.loop = true
+      audioElement.volume = 0.7
+      audioElement.preload = "auto"
 
-    return () => {
-      audioElement.pause()
-      audioElement.src = ""
+      // オーディオの読み込み状態を監視
+      audioElement.addEventListener("canplaythrough", () => {
+        console.log("Audio loaded and ready to play")
+
+        try {
+          audioElement.play().catch((error) => {
+            console.log("Auto-play was prevented:", error)
+          })
+        } catch (error) {
+          console.log("Audio play error:", error)
+        }
+      })
+
+      // エラーハンドリングを改善
+      audioElement.addEventListener("error", () => {
+        console.log("Audio could not be loaded, continuing without sound")
+      })
+
+      setAudio(audioElement)
+
+      return () => {
+        audioElement.pause()
+        audioElement.src = ""
+      }
+    } catch (error) {
+      console.log("Audio initialization error, continuing without sound:", error)
     }
-  }, [])
+  }, [isClient])
 
   // ミュート状態が変更されたときに適用
   useEffect(() => {
-    if (audio) {
+    if (!audio || !isClient) return
+
+    try {
       audio.muted = isMuted
 
       // ミュート解除時に再生を試みる
@@ -51,12 +78,16 @@ export default function Stage7BattlePage() {
           console.log("Play error:", error)
         }
       }
+    } catch (error) {
+      console.log("Audio control error, continuing without sound")
     }
-  }, [isMuted, audio])
+  }, [isMuted, audio, isClient])
 
   // 画面タップで再生を試みる関数
   const tryPlayAudio = () => {
-    if (audio && audio.paused && !isMuted) {
+    if (!audio || !isClient) return
+
+    if (audio.paused && !isMuted) {
       try {
         audio.play().catch((error) => {
           console.log("Play on screen tap failed:", error)
@@ -70,6 +101,15 @@ export default function Stage7BattlePage() {
   // Toggle mute
   const toggleMute = () => {
     setIsMuted(!isMuted)
+    tryPlayAudio()
+  }
+
+  // Toggle check completion
+  const toggleCheck = (index: number) => {
+    const newChecksCompleted = [...checksCompleted]
+    newChecksCompleted[index] = !newChecksCompleted[index]
+    setChecksCompleted(newChecksCompleted)
+    tryPlayAudio()
   }
 
   // Calculate hanger count when rack length changes
@@ -81,6 +121,9 @@ export default function Stage7BattlePage() {
       setHangerCount(null)
     }
   }, [rackLength])
+
+  // Check if all checks are completed
+  const allChecksCompleted = checksCompleted.every((check) => check)
 
   // Save record to database and navigate to clear page
   const saveRecord = async () => {
@@ -94,6 +137,7 @@ export default function Stage7BattlePage() {
       console.log("Saving record:", {
         rackLength,
         hangerCount,
+        checksCompleted,
       })
 
       // Navigate to clear page
@@ -107,7 +151,7 @@ export default function Stage7BattlePage() {
   }
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={isClient ? tryPlayAudio : undefined}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}
@@ -160,8 +204,21 @@ export default function Stage7BattlePage() {
           <h2 className="text-2xl font-bold text-yellow-300 mb-6 text-center">適正量を把握しよう</h2>
 
           {/* Check 1 */}
-          <div className="mb-8 bg-teal-800 bg-opacity-50 p-5 rounded-lg border border-teal-700">
-            <h3 className="text-xl font-bold text-yellow-300 mb-4">チェック１</h3>
+          <div
+            className={`mb-8 p-5 rounded-lg border-2 cursor-pointer ${
+              checksCompleted[0]
+                ? "border-green-500 bg-teal-800/80"
+                : "border-teal-700 bg-teal-800/50 hover:border-teal-500"
+            }`}
+            onClick={() => toggleCheck(0)}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xl font-bold text-yellow-300">チェック１：クローゼットの大きさから限界を知る</h3>
+              <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-2 border-yellow-300 bg-teal-900/50">
+                {checksCompleted[0] && <CheckCircle2 className="h-6 w-6 text-green-400" />}
+              </div>
+            </div>
+
             <p className="text-white mb-4">まずハンガーラックの長さから服の適正量を出してみよう</p>
 
             <div className="mb-4">
@@ -176,7 +233,7 @@ export default function Stage7BattlePage() {
                   onChange={(e) => setRackLength(e.target.value)}
                   className="max-w-[120px] bg-teal-950 border-yellow-500 text-white"
                   placeholder="0"
-                  onClick={tryPlayAudio}
+                  onClick={(e) => e.stopPropagation()} // 親要素のクリックイベントを停止
                 />
                 <span className="ml-2 text-white">cm</span>
               </div>
@@ -194,7 +251,7 @@ export default function Stage7BattlePage() {
               <p className="mt-4 text-white">
                 もし大幅にオーバーしていたら、
                 <br />
-                いらない服→<span className="text-red-400 font-bold">「虚無の箱」</span>へ
+                いらない服→<span className="text-red-400 font-bold">「断捨離の箱」</span>へ
                 <br />
                 捨てるか迷う服→<span className="text-amber-400 font-bold">「運命の箱」</span>へ
                 <br />
@@ -204,18 +261,45 @@ export default function Stage7BattlePage() {
           </div>
 
           {/* Check 2 */}
-          <div className="mb-8 bg-teal-800 bg-opacity-50 p-5 rounded-lg border border-teal-700">
-            <h3 className="text-xl font-bold text-yellow-300 mb-4">チェック２</h3>
+          <div
+            className={`mb-8 p-5 rounded-lg border-2 cursor-pointer ${
+              checksCompleted[1]
+                ? "border-green-500 bg-teal-800/80"
+                : "border-teal-700 bg-teal-800/50 hover:border-teal-500"
+            }`}
+            onClick={() => toggleCheck(1)}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xl font-bold text-yellow-300">チェック２：忘却の彼方にいるモノを永遠の眠りへ</h3>
+              <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-2 border-yellow-300 bg-teal-900/50">
+                {checksCompleted[1] && <CheckCircle2 className="h-6 w-6 text-green-400" />}
+              </div>
+            </div>
+
             <p className="text-white mb-4">
               一年以上着ていない服はないかな？
               <br />
-              この一年で着なかった服は思い切って<span className="text-red-400 font-bold">「虚無の箱」</span>へ入れよう！
+              この一年で着なかった服は思い切って<span className="text-red-400 font-bold">「断捨離の箱」</span>
+              へ入れよう！
             </p>
           </div>
 
           {/* Check 3 */}
-          <div className="mb-8 bg-teal-800 bg-opacity-50 p-5 rounded-lg border border-teal-700">
-            <h3 className="text-xl font-bold text-yellow-300 mb-4">チェック３</h3>
+          <div
+            className={`mb-8 p-5 rounded-lg border-2 cursor-pointer ${
+              checksCompleted[2]
+                ? "border-green-500 bg-teal-800/80"
+                : "border-teal-700 bg-teal-800/50 hover:border-teal-500"
+            }`}
+            onClick={() => toggleCheck(2)}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xl font-bold text-yellow-300">チェック３：本当にそんなにいる？</h3>
+              <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-2 border-yellow-300 bg-teal-900/50">
+                {checksCompleted[2] && <CheckCircle2 className="h-6 w-6 text-green-400" />}
+              </div>
+            </div>
+
             <p className="text-white mb-4">普段着は、「７日分＋２～３着」にすると着まわしやすいよ！</p>
 
             <div className="p-4 bg-teal-900 bg-opacity-50 rounded-lg">
@@ -229,20 +313,35 @@ export default function Stage7BattlePage() {
             </div>
 
             <p className="mt-4 text-white">
-              必要以上に持っているアイテムがあったら、<span className="text-red-400 font-bold">「虚無の箱」</span>
+              必要以上に持っているアイテムがあったら、<span className="text-red-400 font-bold">「断捨離の箱」</span>
               へ入れよう！
             </p>
+          </div>
+
+          {/* Progress indicator */}
+          <div className="bg-teal-800 bg-opacity-50 p-4 rounded-lg mb-6">
+            <div className="flex justify-between items-center">
+              <span className="text-white">完了したチェック:</span>
+              <span className={`font-bold ${allChecksCompleted ? "text-green-400" : "text-yellow-300"}`}>
+                {checksCompleted.filter(Boolean).length} / 3
+              </span>
+            </div>
+            <div className="w-full bg-teal-950 rounded-full h-2.5 mt-2">
+              <div
+                className={`${
+                  allChecksCompleted ? "bg-green-500" : "bg-gradient-to-r from-yellow-500 to-amber-500"
+                } h-2.5 rounded-full transition-all duration-500`}
+                style={{ width: `${(checksCompleted.filter(Boolean).length / 3) * 100}%` }}
+              ></div>
+            </div>
           </div>
 
           {/* Submit button */}
           <div className="flex justify-center mt-6">
             <Button
-              onClick={() => {
-                tryPlayAudio()
-                saveRecord()
-              }}
-              disabled={isSaving}
-              className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold py-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              onClick={saveRecord}
+              disabled={isSaving || !allChecksCompleted}
+              className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold py-3 px-8 text-lg rounded-lg shadow-lg transform hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-2"
             >
               {isSaving ? (
                 "保存中..."

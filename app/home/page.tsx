@@ -252,33 +252,33 @@ export default function HomePage() {
 
             {/* Map locations in triangle formation */}
             <div className="absolute inset-0 flex items-center justify-center">
-              {/* Information Center - Top */}
+              {/* forest - Top */}
               <Link
-                href="/information"
+                href="/forest"
                 className="absolute top-[20%] left-[50%] transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform duration-200 z-10"
               >
                 <div className="relative w-20 h-20 sm:w-32 md:w-40 lg:w-48 sm:h-32 md:h-40 lg:h-48 cursor-pointer">
                   <div className="absolute inset-0 bg-purple-500 bg-opacity-20 animate-pulse rounded-lg"></div>
                   <div className="absolute inset-0 border-2 border-yellow-500 rounded-lg"></div>
-                  <Image src="/information.webp" alt="案内所" fill className="object-cover rounded-lg" />
+                  <Image src="/forest.webp" alt="鍛練の森" fill className="object-cover rounded-lg" />
                 </div>
                 <div className="rpg-nameplate mt-1 bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900">
-                  <p className="text-white text-center text-xs sm:text-sm md:text-base">案内所</p>
+                  <p className="text-white text-center text-xs sm:text-sm md:text-base">鍛練の森</p>
                 </div>
               </Link>
 
               {/* Gold Storage - Top Left */}
               <Link
-                href="/mymono"
+                href="/lake"
                 className="absolute top-[30%] left-[25%] transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform duration-200 z-10"
               >
                 <div className="relative w-16 h-16 sm:w-28 md:w-36 lg:w-40 sm:h-28 md:h-36 lg:h-40 cursor-pointer">
                   <div className="absolute inset-0 bg-purple-500 bg-opacity-20 animate-pulse rounded-lg"></div>
                   <div className="absolute inset-0 border-2 border-yellow-500 rounded-lg"></div>
-                  <Image src="/mymono.webp" alt="マイコレクション" fill className="object-cover rounded-lg" />
+                  <Image src="/lake.webp" alt="秘宝の湖" fill className="object-cover rounded-lg" />
                 </div>
                 <div className="rpg-nameplate mt-1 bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900">
-                  <p className="text-white text-center text-xs sm:text-sm md:text-base">マイコレクション</p>
+                  <p className="text-white text-center text-xs sm:text-sm md:text-base">秘宝の湖</p>
                 </div>
               </Link>
 
@@ -297,18 +297,18 @@ export default function HomePage() {
                 </div>
               </Link>
 
-              {/* Pub - Bottom Right - Moved more to the left */}
+              {/* mountain - Bottom Right - Moved more to the left */}
               <Link
-                href="/pub"
+                href="/mountain"
                 className="absolute top-[65%] left-[65%] transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform duration-200 z-10"
               >
                 <div className="relative w-20 h-20 sm:w-32 md:w-40 lg:w-48 sm:h-32 md:h-40 lg:h-48 cursor-pointer">
                   <div className="absolute inset-0 bg-purple-500 bg-opacity-20 animate-pulse rounded-lg"></div>
                   <div className="absolute inset-0 border-2 border-yellow-500 rounded-lg"></div>
-                  <Image src="/pub.webp" alt="酒場" fill className="object-cover rounded-lg" />
+                  <Image src="/mountain.webp" alt="覇者の山" fill className="object-cover rounded-lg" />
                 </div>
                 <div className="rpg-nameplate mt-1 bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900">
-                  <p className="text-white text-center text-xs sm:text-sm md:text-base">酒場</p>
+                  <p className="text-white text-center text-xs sm:text-sm md:text-base">覇者の山</p>
                 </div>
               </Link>
 

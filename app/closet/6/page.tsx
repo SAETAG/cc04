@@ -171,7 +171,7 @@ export default function Stage6Page() {
               未練の洞窟　～決断の時～
             </h1>
             <p className="text-white text-base sm:text-lg">
-              「今こそ決断の時！ '運命の箱' に入れたアイテム… 本当に持ち続ける価値があるか？」
+              「今こそ決断の時！ 未練にまみれたそのアイテム… 本当に持ち続ける価値があるか？」
             </p>
           </div>
 

@@ -1,9 +1,7 @@
 "use client"
 
 import { useRef } from "react"
-
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
@@ -16,18 +14,18 @@ import { Volume2, VolumeX, ArrowLeft, Star, Lock, Home, Send, X } from "lucide-r
 const stages = [
   { id: 1, name: "闇の扉", icon: "🚪", unlocked: true },
   { id: 2, name: "選別の祭壇", icon: "🎁", unlocked: false },
-  { id: 3, name: "虚無の広間", icon: "📦", unlocked: false },
+  { id: 3, name: "解放の広間", icon: "📦", unlocked: false },
   { id: 4, name: "選ばれし者", icon: "💖", unlocked: false },
   { id: 5, name: "断捨離の審判", icon: "🗑️", unlocked: false },
   { id: 6, name: "未練の洞窟", icon: "💭", unlocked: false },
   { id: 7, name: "限界の迷宮", icon: "🏰", unlocked: false },
   { id: 8, name: "秩序の神殿", icon: "🌈", unlocked: false },
   { id: 9, name: "時の洞窟", icon: "⏳", unlocked: false },
-  { id: 10, name: "最適化の聖域", icon: "📍", unlocked: false },
-  { id: 11, name: "記録の書庫", icon: "📖", unlocked: false },
-  { id: 12, name: "封印の間", icon: "📸", unlocked: false },
-  { id: 13, name: "調整の塔", icon: "🔧", unlocked: false },
-  { id: 14, name: "秩序の王国", icon: "🏰", unlocked: false },
+  { id: 10, name: "収納の回廊", icon: "📍", unlocked: false },
+  { id: 11, name: "対話の鏡", icon: "📖", unlocked: false },
+  { id: 12, name: "確認の間", icon: "📸", unlocked: false },
+  { id: 13, name: "帰還の里", icon: "🔧", unlocked: false },
+  { id: 14, name: "最終決戦", icon: "🏰", unlocked: false },
 ]
 
 // Array of clothing emojis for background stamps
@@ -35,7 +33,6 @@ const clothingEmojis = [
   "👒",
   "👑",
   "👗",
-  "👙",
   "👖",
   "✨",
   "🧤",
@@ -54,6 +51,22 @@ const clothingEmojis = [
   "🧥",
 ]
 
+// Pre-generate positions for background emojis to avoid hydration errors
+const backgroundEmojis = Array(15)
+  .fill(null)
+  .map((_, i) => ({
+    id: i,
+    emoji: clothingEmojis[i % clothingEmojis.length],
+    style: {
+      top: `${i * 6.5}%`,
+      left: `${(i * 7) % 100}%`,
+      opacity: 0.3,
+      fontSize: "3.5rem",
+      transform: `rotate(${i % 2 === 0 ? 10 : -10}deg)`,
+      filter: "drop-shadow(0 0 5px rgba(255, 255, 255, 0.3))",
+    },
+  }))
+
 export default function ClosetPage() {
   const [isMuted, setIsMuted] = useState(false)
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
@@ -64,12 +77,20 @@ export default function ClosetPage() {
   const [chatMessages, setChatMessages] = useState([
     { sender: "mo-chan", text: "クローゼット王国での冒険はどうですか？何か質問があればどうぞ！" },
   ])
+  const [isClient, setIsClient] = useState(false)
   const chatInputRef = useRef<HTMLInputElement>(null)
   const chatEndRef = useRef<HTMLDivElement | null>(null)
   const router = useRouter()
 
-  // シンプルな音声初期化
+  // クライアントサイドでのみ実行されるようにする
   useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // シンプルな音声初期化 - クライアントサイドでのみ実行
+  useEffect(() => {
+    if (!isClient) return
+
     const audioElement = new Audio("/closet.mp3")
     audioElement.loop = true
     audioElement.volume = 0.7
@@ -87,25 +108,25 @@ export default function ClosetPage() {
       audioElement.pause()
       audioElement.src = ""
     }
-  }, [])
+  }, [isClient])
 
   // ミュート状態が変更されたときに適用
   useEffect(() => {
-    if (audio) {
-      audio.muted = isMuted
+    if (!audio || !isClient) return
 
-      // ミュート解除時に再生を試みる
-      if (!isMuted && audio.paused) {
-        try {
-          audio.play().catch((error) => {
-            console.log("Play on unmute failed:", error)
-          })
-        } catch (error) {
-          console.log("Play error:", error)
-        }
+    audio.muted = isMuted
+
+    // ミュート解除時に再生を試みる
+    if (!isMuted && audio.paused) {
+      try {
+        audio.play().catch((error) => {
+          console.log("Play on unmute failed:", error)
+        })
+      } catch (error) {
+        console.log("Play error:", error)
       }
     }
-  }, [isMuted, audio])
+  }, [isMuted, audio, isClient])
 
   // Scroll to bottom of chat when messages change
   useEffect(() => {
@@ -121,7 +142,9 @@ export default function ClosetPage() {
 
   // 画面タップで再生を試みる関数
   const tryPlayAudio = () => {
-    if (audio && audio.paused && !isMuted) {
+    if (!audio || !isClient) return
+
+    if (audio.paused && !isMuted) {
       try {
         audio.play().catch((error) => {
           console.log("Play on screen tap failed:", error)
@@ -209,7 +232,7 @@ export default function ClosetPage() {
   }
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={isClient ? tryPlayAudio : undefined}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}
@@ -262,7 +285,9 @@ export default function ClosetPage() {
             <div className="bg-gradient-to-br from-purple-900 to-teal-900 rounded-xl p-6 max-w-md border-2 border-yellow-500 shadow-lg relative">
               <div className="absolute -top-16 left-1/2 transform -translate-x-1/2">
                 <div className="relative w-24 h-24" style={{ animation: "rpg-float 3s ease-in-out infinite" }}>
-                  <Image src="/cow-fairy.webp" alt="片付けの妖精モーちゃん" fill className="object-contain" />
+                  {isClient && (
+                    <Image src="/cow-fairy.webp" alt="片付けの妖精モーちゃん" fill className="object-contain" />
+                  )}
                 </div>
               </div>
 
@@ -284,25 +309,16 @@ export default function ClosetPage() {
           </div>
         )}
 
-        {/* Background clothing stamps - larger and static */}
-        <div className="absolute inset-0 overflow-hidden">
-          {[...Array(15)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute"
-              style={{
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-                opacity: 0.3 + Math.random() * 0.2,
-                fontSize: `${3 + Math.random() * 2}rem`, // Much larger font size
-                transform: `rotate(${Math.random() * 30 - 15}deg)`,
-                filter: "drop-shadow(0 0 5px rgba(255, 255, 255, 0.3))", // Add subtle glow
-              }}
-            >
-              {clothingEmojis[Math.floor(Math.random() * clothingEmojis.length)]}
-            </div>
-          ))}
-        </div>
+        {/* Background clothing stamps - with fixed positions */}
+        {isClient && (
+          <div className="absolute inset-0 overflow-hidden">
+            {backgroundEmojis.map((item) => (
+              <div key={item.id} className="absolute" style={item.style as React.CSSProperties}>
+                {item.emoji}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Stages path */}
         <div className="w-full max-w-md mx-auto mt-4 pb-20 relative">
@@ -455,7 +471,7 @@ export default function ClosetPage() {
               onClick={toggleChat}
             >
               <div className="absolute -inset-1 rounded-full bg-purple-500 bg-opacity-30 animate-pulse"></div>
-              <Image src="/cow-fairy.webp" alt="片付けの妖精モーちゃん" fill className="object-contain" />
+              {isClient && <Image src="/cow-fairy.webp" alt="片付けの妖精モーちゃん" fill className="object-contain" />}
             </div>
           </div>
         </div>

@@ -4,19 +4,33 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Volume2, VolumeX, ArrowLeft, Home, CassetteTapeIcon as Tape } from "lucide-react"
+import { Volume2, VolumeX, ArrowLeft, Home, Sword, Shield } from "lucide-react"
 
 export default function Stage14() {
   const router = useRouter()
   const [showContent, setShowContent] = useState(true)
   const [showVideo, setShowVideo] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
+  const [audioReady, setAudioReady] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
+  // 音声の初期化のみを行い、自動再生はしない
   useEffect(() => {
-    audioRef.current = new Audio("/steptitle.mp3")
-    audioRef.current.play().catch((error) => console.error("Audio playback failed:", error))
+    if (typeof window !== "undefined") {
+      audioRef.current = new Audio("/steptitle.mp3")
+      audioRef.current.preload = "auto"
+
+      // 音声の読み込み完了を検知
+      audioRef.current.addEventListener("canplaythrough", () => {
+        setAudioReady(true)
+      })
+
+      // エラーハンドリング
+      audioRef.current.addEventListener("error", (e) => {
+        console.error("Audio loading error:", e)
+      })
+    }
 
     return () => {
       if (audioRef.current) {
@@ -26,6 +40,15 @@ export default function Stage14() {
     }
   }, [])
 
+  // ページ内のどこかをクリックしたときに音声再生を試みる
+  const tryPlayAudio = () => {
+    if (audioRef.current && audioReady && !isMuted) {
+      audioRef.current.play().catch((error) => {
+        console.log("Audio playback failed, this is expected if no user interaction yet:", error)
+      })
+    }
+  }
+
   const handleStartBattle = () => {
     if (audioRef.current) {
       audioRef.current.pause()
@@ -34,32 +57,22 @@ export default function Stage14() {
     router.push("/closet/14/battle")
   }
 
-  const handleShowVideo = () => {
-    setShowVideo(true)
-    if (audioRef.current) {
-      audioRef.current.pause()
-    }
-  }
-
-  const handleCloseVideo = () => {
-    setShowVideo(false)
-    if (videoRef.current) {
-      videoRef.current.pause()
-    }
-    if (audioRef.current && !isMuted) {
-      audioRef.current.play().catch((error) => console.error("Audio playback failed:", error))
-    }
-  }
-
   const toggleMute = () => {
     setIsMuted(!isMuted)
     if (audioRef.current) {
       audioRef.current.muted = !audioRef.current.muted
+
+      // ミュート解除時に再生を試みる
+      if (!isMuted && audioRef.current.paused && audioReady) {
+        audioRef.current.play().catch((error) => {
+          console.log("Audio playback failed on unmute:", error)
+        })
+      }
     }
   }
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col">
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}
@@ -80,7 +93,7 @@ export default function Stage14() {
           </Link>
           <div className="flex items-center">
             <span className="text-lg sm:text-2xl font-bold text-yellow-300 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)] px-2">
-              収納王国
+              最終決戦
             </span>
           </div>
         </div>
@@ -108,76 +121,46 @@ export default function Stage14() {
 
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center justify-center p-4">
-        <div className="max-w-4xl w-full bg-gradient-to-r from-purple-900/80 to-teal-900/80 p-6 rounded-lg border-2 border-yellow-400 mb-6">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-yellow-300 mb-4 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]">
-              「ここに 'モノの住所' を定め、収納王国に秩序をもたらせ！ これが未来への鍵だ。」
+        <div className="max-w-4xl w-full bg-gradient-to-r from-purple-900/80 to-teal-900/80 p-6 rounded-lg border-2 border-yellow-400 mb-6 relative overflow-hidden">
+          {/* 背景エフェクト */}
+          <div className="absolute inset-0 bg-red-500/10 animate-pulse"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-red-900/30"></div>
+
+          <div className="text-center mb-6 relative z-10">
+            <h2 className="text-3xl sm:text-4xl font-bold text-yellow-300 mb-4 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)] tracking-wider uppercase">
+              時は、満ちた。さぁ、最終決戦の幕開けだ！
             </h2>
 
-            <div className="bg-purple-900/50 p-4 rounded-lg border border-teal-400 mb-6">
-              <h3 className="text-xl font-semibold text-white mb-2">ミッション:</h3>
-              <p className="text-lg text-white">衣装ケースやひきだしに、ラベリングする</p>
-              <div className="flex justify-center mt-3">
-                <Tape className="h-16 w-16 text-yellow-300" />
-              </div>
+            <div className="bg-purple-900/50 p-6 rounded-lg border-2 border-red-500 mb-8 shadow-[0_0_15px_rgba(220,38,38,0.3)]">
+              <h3 className="text-xl font-semibold text-white mb-3">ミッション:</h3>
+              <p className="text-3xl font-bold text-red-400 mb-4 tracking-widest animate-pulse drop-shadow-[0_0_10px_rgba(248,113,113,0.6)]">
+                最終決戦
+              </p>
 
-              <div className="mt-4 text-left">
-                <h4 className="font-semibold mb-2 text-white">ラベリングのコツ:</h4>
-                <ul className="list-disc pl-5 space-y-1 text-white">
-                  <li>写真や色分けを活用する</li>
-                  <li>ラベルは見やすい位置に貼る</li>
-                  <li>収納内容が変わったら、ラベルも更新する</li>
-                </ul>
+              <div className="flex justify-center items-center gap-4 mt-4">
+                <div className="relative">
+                  <Sword className="h-16 w-16 text-yellow-300 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)] animate-[pulse_1.5s_ease-in-out_infinite]" />
+                  <div className="absolute inset-0 bg-yellow-500/20 blur-xl rounded-full animate-ping"></div>
+                </div>
+                <div className="relative">
+                  <Shield className="h-16 w-16 text-yellow-300 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)] animate-[pulse_2s_ease-in-out_infinite]" />
+                  <div className="absolute inset-0 bg-yellow-500/20 blur-xl rounded-full animate-ping delay-300"></div>
+                </div>
               </div>
             </div>
 
             <div className="flex justify-center gap-4 mb-6">
               <button
-                onClick={handleShowVideo}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-2 px-6 rounded-lg border border-blue-400 shadow-lg transition duration-300"
-              >
-                チュートリアルを見る
-              </button>
-
-              <button
                 onClick={handleStartBattle}
-                className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold py-2 px-6 rounded-lg border border-red-400 shadow-lg transition duration-300 animate-pulse"
+                className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold py-3 px-8 rounded-lg border-2 border-red-400 shadow-lg transition duration-300 animate-pulse text-xl relative overflow-hidden group"
               >
-                最終決戦開始！
+                <span className="relative z-10">最終決戦開始！</span>
+                <span className="absolute inset-0 bg-gradient-to-r from-yellow-500/0 via-yellow-500/30 to-yellow-500/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
               </button>
             </div>
           </div>
         </div>
       </main>
-
-      {/* Video modal */}
-      {showVideo && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-r from-purple-900 to-teal-900 p-4 rounded-lg border-2 border-yellow-400 max-w-4xl w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-yellow-300">チュートリアルビデオ</h3>
-              <button
-                onClick={handleCloseVideo}
-                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-full"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="relative aspect-video">
-              <video
-                ref={videoRef}
-                className="w-full h-full rounded-lg"
-                controls
-                autoPlay
-                poster="/placeholder.svg?height=400&width=600"
-              >
-                <source src="/step14_tutorial.mp4" type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

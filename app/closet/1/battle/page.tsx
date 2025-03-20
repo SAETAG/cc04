@@ -1,35 +1,29 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect, useRef } from "react"
-import Image from "next/image"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Volume2, VolumeX, ArrowLeft, Home, Upload, Camera } from "lucide-react"
+import { Volume2, VolumeX, ArrowLeft, Home } from "lucide-react"
 
 export default function Stage1BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [problems, setProblems] = useState("")
   const [ideals, setIdeals] = useState("")
-  const [isMobile, setIsMobile] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isClient, setIsClient] = useState(false)
   const router = useRouter()
 
-  // Check if device is mobile
+  // クライアントサイドでのみ実行されるようにする
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent))
-    }
+    setIsClient(true)
   }, [])
 
-  // シンプルな音声初期化
+  // シンプルな音声初期化 - クライアントサイドでのみ実行
   useEffect(() => {
+    if (!isClient) return
+
     const audioElement = new Audio("/stepfight_1.mp3")
     audioElement.loop = true
     audioElement.volume = 0.7
@@ -47,29 +41,31 @@ export default function Stage1BattlePage() {
       audioElement.pause()
       audioElement.src = ""
     }
-  }, [])
+  }, [isClient])
 
   // ミュート状態が変更されたときに適用
   useEffect(() => {
-    if (audio) {
-      audio.muted = isMuted
+    if (!audio) return
 
-      // ミュート解除時に再生を試みる
-      if (!isMuted && audio.paused) {
-        try {
-          audio.play().catch((error) => {
-            console.log("Play on unmute failed:", error)
-          })
-        } catch (error) {
-          console.log("Play error:", error)
-        }
+    audio.muted = isMuted
+
+    // ミュート解除時に再生を試みる
+    if (!isMuted && audio.paused) {
+      try {
+        audio.play().catch((error) => {
+          console.log("Play on unmute failed:", error)
+        })
+      } catch (error) {
+        console.log("Play error:", error)
       }
     }
   }, [isMuted, audio])
 
   // 画面タップで再生を試みる関数
   const tryPlayAudio = () => {
-    if (audio && audio.paused && !isMuted) {
+    if (!audio || !isClient) return
+
+    if (audio.paused && !isMuted) {
       try {
         audio.play().catch((error) => {
           console.log("Play on screen tap failed:", error)
@@ -85,41 +81,6 @@ export default function Stage1BattlePage() {
     setIsMuted(!isMuted)
   }
 
-  // Handle file upload
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
-
-    // ファイル選択時に音声再生を試みる（ユーザーインタラクション）
-    tryPlayAudio()
-  }
-
-  // Trigger file input click
-  const triggerFileInput = () => {
-    fileInputRef.current?.click()
-
-    // ファイルアップロードボタンクリック時に音声再生を試みる（ユーザーインタラクション）
-    tryPlayAudio()
-  }
-
-  // Open camera on mobile devices
-  const openCamera = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.accept = "image/*"
-      fileInputRef.current.capture = "environment"
-      fileInputRef.current.click()
-    }
-
-    // カメラボタンクリック時に音声再生を試みる（ユーザーインタラクション）
-    tryPlayAudio()
-  }
-
   // Save record to database and navigate to clear page
   const saveRecord = async () => {
     setIsSaving(true)
@@ -130,9 +91,8 @@ export default function Stage1BattlePage() {
 
       // In a real app, you would save the data to your database here
       console.log("Saving record:", {
-        imageUrl: imagePreview ? "Image uploaded" : "No image",
-        problems,
-        ideals,
+        problemMonster: problems,
+        idealCloset: ideals,
       })
 
       // Navigate to clear page
@@ -146,7 +106,7 @@ export default function Stage1BattlePage() {
   }
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={isClient ? tryPlayAudio : undefined}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}
@@ -196,101 +156,385 @@ export default function Stage1BattlePage() {
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center p-4 overflow-auto">
         <div className="max-w-2xl w-full bg-gradient-to-b from-purple-900 to-teal-900 rounded-lg p-6 border-2 border-yellow-500 shadow-lg mb-8">
-          {/* Photo upload section */}
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-yellow-300 mb-4">今のクローゼットの写真を撮ってみよう</h2>
-
-            <div className="flex flex-col items-center">
-              {imagePreview ? (
-                <div className="relative w-full max-w-md h-64 mb-4">
-                  <Image
-                    src={imagePreview || "/placeholder.svg"}
-                    alt="クローゼットの写真"
-                    fill
-                    className="object-contain rounded-lg border-2 border-teal-600"
-                  />
-                </div>
-              ) : (
-                <div className="w-full max-w-md h-64 bg-teal-800 bg-opacity-50 rounded-lg border-2 border-dashed border-teal-600 flex flex-col items-center justify-center mb-4">
-                  <Upload className="h-12 w-12 text-teal-400 mb-2" />
-                  <p className="text-teal-300 text-center">写真をアップロードするか、カメラで撮影してください</p>
-                </div>
-              )}
-
-              <div className="flex gap-4">
-                <Button
-                  onClick={triggerFileInput}
-                  className="bg-teal-700 hover:bg-teal-800 text-white flex items-center gap-2"
-                >
-                  <Upload className="h-4 w-4" />
-                  写真をアップロード
-                </Button>
-
-                {isMobile && (
-                  <Button
-                    onClick={openCamera}
-                    className="bg-teal-700 hover:bg-teal-800 text-white flex items-center gap-2"
-                  >
-                    <Camera className="h-4 w-4" />
-                    カメラで撮影
-                  </Button>
-                )}
-              </div>
-
-              <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-            </div>
-          </div>
-
           {/* Problems section */}
           <div className="mb-8">
-            <h2 className="text-xl font-bold text-yellow-300 mb-2">今のクローゼットの不満点を書き出してみよう</h2>
-            <p className="text-white mb-4">
-              あなたのクローゼットの一番の悩みは「リバウンドラゴン」でしたね。具体的にどんなことに困っていますか？
-            </p>
+            <h2 className="text-xl font-bold text-yellow-300 mb-2">今のクローゼットの最も大きい不満点を選ぼう</h2>
+            <p className="text-white mb-4">あなたのクローゼットの一番の悩みは何ですか？</p>
 
-            <div className="bg-teal-800 bg-opacity-50 p-3 rounded-lg mb-2">
-              <p className="text-teal-300 text-sm">
-                例：服が多すぎて何があるか把握できない、いつも同じ服ばかり着てしまう、など
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              <button
+                onClick={() => setProblems("リバウンドラゴン")}
+                className={`relative overflow-hidden rounded-lg border-2 ${
+                  problems === "リバウンドラゴン"
+                    ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]"
+                    : "border-pink-400 hover:border-pink-300"
+                } bg-gradient-to-b from-pink-900 to-pink-800 p-4 transition-all duration-300 h-52 md:h-56 flex flex-col items-center justify-between`}
+              >
+                <div className="absolute top-0 left-0 w-full h-full bg-pink-500 opacity-10 rounded-lg"></div>
+                <div
+                  className={`text-center ${
+                    problems === "リバウンドラゴン" ? "scale-110" : ""
+                  } transition-transform duration-300`}
+                >
+                  <div className="flex justify-center mb-2">
+                    <div className="w-16 h-16 bg-pink-800 rounded-full flex items-center justify-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-yellow-300"
+                      >
+                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                        <path d="M16 16h5v5"></path>
+                      </svg>
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-bold text-yellow-300 px-1 leading-tight">
+                    片付けてもすぐにリバウンドする
+                  </h3>
+                  <p className="text-white text-base font-semibold mt-2 px-1">「リバウンドラゴン」</p>
+                </div>
+                {problems === "リバウンドラゴン" && (
+                  <div className="absolute bottom-2 right-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-yellow-400"
+                    >
+                      <path d="M20 6 9 17l-5-5"></path>
+                    </svg>
+                  </div>
+                )}
+              </button>
+
+              <button
+                onClick={() => setProblems("忘却ゴブリン")}
+                className={`relative overflow-hidden rounded-lg border-2 ${
+                  problems === "忘却ゴブリン"
+                    ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]"
+                    : "border-cyan-400 hover:border-cyan-300"
+                } bg-gradient-to-b from-cyan-800 to-sky-700 p-4 transition-all duration-300 h-52 md:h-56 flex flex-col items-center justify-between`}
+              >
+                <div className="absolute top-0 left-0 w-full h-full bg-cyan-500 opacity-10 rounded-lg"></div>
+                <div
+                  className={`text-center ${
+                    problems === "忘却ゴブリン" ? "scale-110" : ""
+                  } transition-transform duration-300`}
+                >
+                  <div className="flex justify-center mb-2">
+                    <div className="w-16 h-16 bg-cyan-700 rounded-full flex items-center justify-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-yellow-300"
+                      >
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 8v4"></path>
+                        <path d="M12 16h.01"></path>
+                      </svg>
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-bold text-yellow-300 px-1 leading-tight">どこに何があるかわからない</h3>
+                  <p className="text-white text-base font-semibold mt-2 px-1">「忘却ゴブリン」</p>
+                </div>
+                {problems === "忘却ゴブリン" && (
+                  <div className="absolute bottom-2 right-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-yellow-400"
+                    >
+                      <path d="M20 6 9 17l-5-5"></path>
+                    </svg>
+                  </div>
+                )}
+              </button>
+
+              <button
+                onClick={() => setProblems("無限増殖スライム")}
+                className={`relative overflow-hidden rounded-lg border-2 ${
+                  problems === "無限増殖スライム"
+                    ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]"
+                    : "border-orange-400 hover:border-orange-300"
+                } bg-gradient-to-b from-orange-800 to-orange-900 p-4 transition-all duration-300 h-52 md:h-56 flex flex-col items-center justify-between`}
+              >
+                <div className="absolute top-0 left-0 w-full h-full bg-orange-500 opacity-10 rounded-lg"></div>
+                <div
+                  className={`text-center ${
+                    problems === "無限増殖スライム" ? "scale-110" : ""
+                  } transition-transform duration-300`}
+                >
+                  <div className="flex justify-center mb-2">
+                    <div className="w-16 h-16 bg-orange-800 rounded-full flex items-center justify-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-yellow-300"
+                      >
+                        <path d="M12 3v3"></path>
+                        <path d="M18 9h3"></path>
+                        <path d="M21 18h-3"></path>
+                        <path d="M12 21v-3"></path>
+                        <path d="M3 15h3"></path>
+                        <path d="M3 9h3"></path>
+                        <path d="M18 12a6 6 0 0 0-6-6"></path>
+                        <path d="M6 12a6 6 0 0 0 6 6"></path>
+                      </svg>
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-bold text-yellow-300 px-1 leading-tight">モノが増えすぎる</h3>
+                  <p className="text-white text-base font-semibold mt-2 px-1">「無限増殖スライム」</p>
+                </div>
+                {problems === "無限増殖スライム" && (
+                  <div className="absolute bottom-2 right-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-yellow-400"
+                    >
+                      <path d="M20 6 9 17l-5-5"></path>
+                    </svg>
+                  </div>
+                )}
+              </button>
             </div>
-
-            <Textarea
-              value={problems}
-              onChange={(e) => setProblems(e.target.value)}
-              placeholder="あなたの不満点を入力してください..."
-              className="w-full h-32 bg-teal-800 border-teal-600 text-white placeholder:text-teal-400"
-              onClick={tryPlayAudio}
-            />
           </div>
 
           {/* Ideals section */}
-          <div className="mb-4">
-            <h2 className="text-xl font-bold text-yellow-300 mb-2">理想のクローゼットを妄想して書き出してみよう</h2>
-            <p className="text-white mb-4">
-              あなたの一番理想の姿は「クリスタルクローゼット」でしたね。具体的にどんなクローゼットにしたいですか？
-            </p>
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-yellow-300 mb-2">理想のクローゼットに最も近いものを選ぼう</h2>
+            <p className="text-white mb-4">あなたの理想のクローゼットはどのようなものですか？</p>
 
-            <div className="bg-teal-800 bg-opacity-50 p-3 rounded-lg mb-2">
-              <p className="text-teal-300 text-sm">例：一目で全ての服が見渡せる、色別に整理されている、など</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              <button
+                onClick={() => setIdeals("クリスタルクローゼット")}
+                className={`relative overflow-hidden rounded-lg border-2 ${
+                  ideals === "クリスタルクローゼット"
+                    ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]"
+                    : "border-pink-400 hover:border-pink-300"
+                } bg-gradient-to-b from-pink-900 to-pink-800 p-4 transition-all duration-300 h-52 md:h-56 flex flex-col items-center justify-between`}
+              >
+                <div className="absolute top-0 left-0 w-full h-full bg-pink-500 opacity-10 rounded-lg"></div>
+                <div
+                  className={`text-center ${
+                    ideals === "クリスタルクローゼット" ? "scale-110" : ""
+                  } transition-transform duration-300`}
+                >
+                  <div className="flex justify-center mb-2">
+                    <div className="w-16 h-16 bg-pink-800 rounded-full flex items-center justify-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-yellow-300"
+                      >
+                        <path d="M2 12h20"></path>
+                        <path d="M10 16v4"></path>
+                        <path d="M14 16v4"></path>
+                        <path d="M3 4h18v8H3z"></path>
+                        <path d="M4 8h16"></path>
+                      </svg>
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-bold text-yellow-300 px-1 leading-tight">
+                    一目でどこになにがあるのかわかる
+                  </h3>
+                  <p className="text-white text-base font-semibold mt-2 px-1">「クリスタルクローゼット」</p>
+                </div>
+                {ideals === "クリスタルクローゼット" && (
+                  <div className="absolute bottom-2 right-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-yellow-400"
+                    >
+                      <path d="M20 6 9 17l-5-5"></path>
+                    </svg>
+                  </div>
+                )}
+              </button>
+
+              <button
+                onClick={() => setIdeals("スタイリストクローゼット")}
+                className={`relative overflow-hidden rounded-lg border-2 ${
+                  ideals === "スタイリストクローゼット"
+                    ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]"
+                    : "border-cyan-400 hover:border-cyan-300"
+                } bg-gradient-to-b from-cyan-800 to-sky-700 p-4 transition-all duration-300 h-52 md:h-56 flex flex-col items-center justify-between`}
+              >
+                <div className="absolute top-0 left-0 w-full h-full bg-cyan-500 opacity-10 rounded-lg"></div>
+                <div
+                  className={`text-center ${
+                    ideals === "スタイリストクローゼット" ? "scale-110" : ""
+                  } transition-transform duration-300`}
+                >
+                  <div className="flex justify-center mb-2">
+                    <div className="w-16 h-16 bg-cyan-700 rounded-full flex items-center justify-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-yellow-300"
+                      >
+                        <path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h1"></path>
+                        <path d="M16 3h1a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-1"></path>
+                        <path d="M12 12v9"></path>
+                        <path d="M8 21h8"></path>
+                        <path d="M4 8h16"></path>
+                      </svg>
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-bold text-yellow-300 px-1 leading-tight">すぐにコーディネートが決まる</h3>
+                  <p className="text-white text-base font-semibold mt-2 px-1">「スタイリストクローゼット」</p>
+                </div>
+                {ideals === "スタイリストクローゼット" && (
+                  <div className="absolute bottom-2 right-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-yellow-400"
+                    >
+                      <path d="M20 6 9 17l-5-5"></path>
+                    </svg>
+                  </div>
+                )}
+              </button>
+
+              <button
+                onClick={() => setIdeals("エターナルクローゼット")}
+                className={`relative overflow-hidden rounded-lg border-2 ${
+                  ideals === "エターナルクローゼット"
+                    ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]"
+                    : "border-orange-400 hover:border-orange-300"
+                } bg-gradient-to-b from-orange-800 to-orange-900 p-4 transition-all duration-300 h-52 md:h-56 flex flex-col items-center justify-between`}
+              >
+                <div className="absolute top-0 left-0 w-full h-full bg-orange-500 opacity-10 rounded-lg"></div>
+                <div
+                  className={`text-center ${
+                    ideals === "エターナルクローゼット" ? "scale-110" : ""
+                  } transition-transform duration-300`}
+                >
+                  <div className="flex justify-center mb-2">
+                    <div className="w-16 h-16 bg-orange-800 rounded-full flex items-center justify-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-yellow-300"
+                      >
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 6v6l4 2"></path>
+                      </svg>
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-bold text-yellow-300 px-1 leading-tight">永遠に綺麗な状態を保つ</h3>
+                  <p className="text-white text-base font-semibold mt-2 px-1">「エターナルクローゼット」</p>
+                </div>
+                {ideals === "エターナルクローゼット" && (
+                  <div className="absolute bottom-2 right-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-yellow-400"
+                    >
+                      <path d="M20 6 9 17l-5-5"></path>
+                    </svg>
+                  </div>
+                )}
+              </button>
             </div>
-
-            <Textarea
-              value={ideals}
-              onChange={(e) => setIdeals(e.target.value)}
-              placeholder="あなたの理想を入力してください..."
-              className="w-full h-32 bg-teal-800 border-teal-600 text-white placeholder:text-teal-400"
-              onClick={tryPlayAudio}
-            />
           </div>
 
           {/* Submit button */}
-          <div className="flex justify-center mt-6">
+          <div className="flex justify-center mt-8">
             <Button
               onClick={saveRecord}
-              disabled={isSaving}
-              className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold py-2 px-6"
+              disabled={isSaving || !problems || !ideals}
+              className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold py-3 px-8 text-lg rounded-lg shadow-lg transform hover:scale-105 transition-transform"
             >
-              {isSaving ? "保存中..." : "記録を保存する"}
+              {isSaving ? "保存中..." : "記録する"}
             </Button>
           </div>
         </div>

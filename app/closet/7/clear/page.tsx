@@ -152,7 +152,7 @@ export default function Stage7ClearPage() {
           <p className="text-white text-lg sm:text-xl mb-6">
             おめでとうございます！「限界の迷宮」ステージをクリアしました。
             <br />
-            あなたは適正量を把握し、オーバーする物を思い切って手放すことが���きました。
+            あなたは適正量を把握し、オーバーする物を思い切って手放すことが出来ました。
           </p>
 
           {/* Obtained Items Section */}

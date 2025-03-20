@@ -168,10 +168,10 @@ export default function Stage11Page() {
           {/* Stage title and description */}
           <div className="text-center mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold text-yellow-300 mb-4 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]">
-              記録の書庫　～アイテムを記録する～
+              対話の鏡　～生まれ変わったクローゼットを見つめよう～
             </h1>
             <p className="text-white text-base sm:text-lg">
-              「未来の自分のために記録せよ… 今持っているものすべて、情報を刻むのだ！」
+              「収まるべきものが全て収まるところに収まった…今の気持ちを記録しよう！」
             </p>
           </div>
 

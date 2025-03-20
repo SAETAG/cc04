@@ -168,7 +168,7 @@ export default function Stage10Page() {
           {/* Stage title and description */}
           <div className="text-center mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold text-yellow-300 mb-4 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]">
-              最適化の聖域　～収納場所を決める～
+              収納の回廊　～収納していく～
             </h1>
             <p className="text-white text-base sm:text-lg">
               「選ばれしモノたちよ、最適な場所へ！ 使いやすさを求め、収納の神髄を極めよ。」

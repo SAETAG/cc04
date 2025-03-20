@@ -1,72 +1,126 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect, useRef } from "react"
-import Image from "next/image"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Volume2, VolumeX, ArrowLeft, Home, Upload, X, Plus, Save } from "lucide-react"
+import { Volume2, VolumeX, ArrowLeft, Home, Heart, Save, AlertCircle } from "lucide-react"
 
-// Item type definition
-type Item = {
+// Feeling type definition
+type Feeling = {
   id: string
-  image: string
-  name: string
-  description: string
+  text: string
+  selected: boolean
 }
 
 export default function Stage11BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
-  const [items, setItems] = useState<Item[]>([])
-  const [currentItem, setCurrentItem] = useState<Partial<Item>>({
-    id: "",
-    image: "",
-    name: "",
-    description: "",
-  })
-  const [isAddingItem, setIsAddingItem] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+  const [feelings, setFeelings] = useState<Feeling[]>([])
+  const [showMaxSelectedAlert, setShowMaxSelectedAlert] = useState(false)
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
-  // Check if device is mobile
+  // クライアントサイドでのみ実行されるようにする
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent))
-    }
+    setIsClient(true)
   }, [])
 
-  // シンプルな音声初期化
+  // Initialize feelings with random positions
   useEffect(() => {
-    const audioElement = new Audio("/stepfight_11.mp3")
-    audioElement.loop = true
-    audioElement.volume = 0.7
-    setAudio(audioElement)
+    if (!isClient) return
+
+    const feelingTexts = [
+      "スッキリできた！",
+      "断捨離成功！",
+      "整頓完了！",
+      "お気に入り配置できた！",
+      "無駄一掃できた！",
+      "色別に並べられた！",
+      "レイアウト完璧！",
+      "収納革命達成！",
+      "アクセント際立った！",
+      "スペース最大活用！",
+      "なかなか捨てきれなかった…",
+      "迷いが多かった…",
+      "思い出に引きずられた…",
+      "もっと断固とすべきだった！",
+      "決断が遅れた反省！",
+      "整理の達人になった！",
+      "全体バランス良好！",
+      "未来への一歩踏み出した！",
+      "クローゼット変身完了！",
+      "驚きの整理力発揮！",
+      "完璧な調和が生まれた！",
+      "使いやすさ抜群！",
+      "見た目が輝いた！",
+      "収納美学を極めた！",
+      "一新された空間！",
+      "整理上手の証明！",
+      "次回はもっと大胆に！",
+      "後回しにしがちな部分反省！",
+      "余計なものを見直した！",
+      "次回に向けてさらに進化したい！",
+    ]
+
+    // 単純な配列に変更
+    const initialFeelings = feelingTexts.map((text, index) => {
+      return {
+        id: `feeling-${index}`,
+        text,
+        selected: false,
+      }
+    })
+
+    setFeelings(initialFeelings)
+  }, [isClient])
+
+  // シンプルな音声初期化 - クライアントサイドでのみ実行
+  useEffect(() => {
+    if (!isClient) return
 
     try {
-      audioElement.play().catch((error) => {
-        console.log("Auto-play was prevented:", error)
-      })
-    } catch (error) {
-      console.log("Audio play error:", error)
-    }
+      const audioElement = new Audio("/stepfight_11.mp3")
+      audioElement.loop = true
+      audioElement.volume = 0.7
+      audioElement.preload = "auto"
 
-    return () => {
-      audioElement.pause()
-      audioElement.src = ""
+      // オーディオの読み込み状態を監視
+      audioElement.addEventListener("canplaythrough", () => {
+        console.log("Audio loaded and ready to play")
+
+        try {
+          audioElement.play().catch((error) => {
+            console.log("Auto-play was prevented:", error)
+          })
+        } catch (error) {
+          console.log("Audio play error:", error)
+        }
+      })
+
+      // エラーハンドリングを改善
+      audioElement.addEventListener("error", () => {
+        console.log("Audio could not be loaded, continuing without sound")
+      })
+
+      setAudio(audioElement)
+
+      return () => {
+        audioElement.pause()
+        audioElement.src = ""
+      }
+    } catch (error) {
+      console.log("Audio initialization error, continuing without sound:", error)
     }
-  }, [])
+  }, [isClient])
 
   // ミュート状態が変更されたときに適用
   useEffect(() => {
-    if (audio) {
+    if (!audio || !isClient) return
+
+    try {
       audio.muted = isMuted
 
       // ミュート解除時に再生を試みる
@@ -79,12 +133,16 @@ export default function Stage11BattlePage() {
           console.log("Play error:", error)
         }
       }
+    } catch (error) {
+      console.log("Audio control error, continuing without sound")
     }
-  }, [isMuted, audio])
+  }, [isMuted, audio, isClient])
 
   // 画面タップで再生を試みる関数
   const tryPlayAudio = () => {
-    if (audio && audio.paused && !isMuted) {
+    if (!audio || !isClient) return
+
+    if (audio.paused && !isMuted) {
       try {
         audio.play().catch((error) => {
           console.log("Play on screen tap failed:", error)
@@ -98,75 +156,35 @@ export default function Stage11BattlePage() {
   // Toggle mute
   const toggleMute = () => {
     setIsMuted(!isMuted)
+    tryPlayAudio()
   }
 
-  // Handle file upload
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setCurrentItem({
-          ...currentItem,
-          image: reader.result as string,
-        })
-      }
-      reader.readAsDataURL(file)
+  // Get selected feelings count
+  const selectedFeelingsCount = feelings.filter((f) => f.selected).length
+
+  // Toggle feeling selection - only allow 3 selections
+  const toggleFeeling = (id: string) => {
+    const feeling = feelings.find((f) => f.id === id)
+
+    // If already selected, just deselect it
+    if (feeling?.selected) {
+      setFeelings(feelings.map((f) => (f.id === id ? { ...f, selected: false } : f)))
+      setShowMaxSelectedAlert(false)
+      tryPlayAudio()
+      return
     }
 
-    // ファイル選択時に音声再生を試みる（ユーザーインタラクション）
-    tryPlayAudio()
-  }
-
-  // Trigger file input click
-  const triggerFileInput = () => {
-    fileInputRef.current?.click()
-
-    // ファイルアップロードボタンクリック時に音声再生を試みる（ユーザーインタラクション）
-    tryPlayAudio()
-  }
-
-  // Open camera on mobile devices
-  const openCamera = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.accept = "image/*"
-      fileInputRef.current.capture = "environment"
-      fileInputRef.current.click()
+    // If not selected but already have 3 selections, show alert
+    if (selectedFeelingsCount >= 3) {
+      setShowMaxSelectedAlert(true)
+      setTimeout(() => setShowMaxSelectedAlert(false), 3000) // Hide alert after 3 seconds
+      tryPlayAudio()
+      return
     }
 
-    // カメラボタンクリック時に音声再生を試みる（ユーザーインタラクション）
-    tryPlayAudio()
-  }
-
-  // Add new item
-  const addItem = () => {
-    if (currentItem.image && currentItem.name) {
-      const newItem: Item = {
-        id: Date.now().toString(),
-        image: currentItem.image,
-        name: currentItem.name,
-        description: currentItem.description || "",
-      }
-
-      setItems([...items, newItem])
-      setCurrentItem({
-        id: "",
-        image: "",
-        name: "",
-        description: "",
-      })
-      setIsAddingItem(false)
-    }
-
-    // アイテム追加時に音声再生を試みる（ユーザーインタラクション）
-    tryPlayAudio()
-  }
-
-  // Remove item
-  const removeItem = (id: string) => {
-    setItems(items.filter((item) => item.id !== id))
-
-    // アイテム削除時に音声再生を試みる（ユーザーインタラクション）
+    // Otherwise, select it
+    setFeelings(feelings.map((f) => (f.id === id ? { ...f, selected: true } : f)))
+    setShowMaxSelectedAlert(false)
     tryPlayAudio()
   }
 
@@ -180,7 +198,7 @@ export default function Stage11BattlePage() {
 
       // In a real app, you would save the data to your database here
       console.log("Saving record:", {
-        items,
+        selectedFeelings: feelings.filter((f) => f.selected).map((f) => f.text),
       })
 
       // Navigate to clear page
@@ -194,7 +212,7 @@ export default function Stage11BattlePage() {
   }
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={isClient ? tryPlayAudio : undefined}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}
@@ -244,201 +262,83 @@ export default function Stage11BattlePage() {
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center p-4 overflow-auto">
         <div className="max-w-2xl w-full bg-gradient-to-b from-purple-900 to-teal-900 rounded-lg p-6 border-2 border-yellow-500 shadow-lg mb-8">
-          <h2 className="text-2xl font-bold text-yellow-300 mb-6 text-center">アイテムを記録する</h2>
+          {/* Feelings section */}
+          <div className="mb-10">
+            <h2 className="text-2xl font-bold text-yellow-300 mb-4 text-center">今の気持ちを記録しよう！</h2>
+            <p className="text-white text-center mb-8">
+              以下の中から、あなたの気持ちに最も近いものを<span className="text-yellow-300 font-bold">3つだけ</span>
+              選んでください。
+            </p>
 
-          <p className="text-white mb-6 text-center">
-            クローゼットのアイテムを写真に撮って記録しましょう。
-            <br />
-            アイテムの名前や説明も一緒に記録すると、後で整理しやすくなります。
-          </p>
+            {/* Max selection alert */}
+            {showMaxSelectedAlert && (
+              <div className="bg-red-900/70 border border-red-500 text-white p-3 rounded-lg mb-4 flex items-center gap-2 animate-pulse">
+                <AlertCircle className="h-5 w-5 text-red-300" />
+                <span>3つまでしか選択できません！他の選択を解除してから選んでください。</span>
+              </div>
+            )}
 
-          {/* Item list */}
-          {items.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-xl font-bold text-yellow-300 mb-4">記録したアイテム ({items.length})</h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-teal-800 bg-opacity-50 p-3 rounded-lg border border-teal-700 relative"
-                  >
-                    <button
-                      onClick={() => removeItem(item.id)}
-                      className="absolute top-2 right-2 bg-red-500 rounded-full p-1 hover:bg-red-600 transition-colors"
-                    >
-                      <X className="h-4 w-4 text-white" />
-                    </button>
-
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <div className="relative w-full sm:w-24 h-24 bg-teal-900 rounded-lg overflow-hidden">
-                        <Image src={item.image || "/placeholder.svg"} alt={item.name} fill className="object-cover" />
-                      </div>
-
-                      <div className="flex-1">
-                        <h4 className="text-lg font-bold text-yellow-200 mb-1">{item.name}</h4>
-                        {item.description && <p className="text-white text-sm">{item.description}</p>}
-                      </div>
-                    </div>
+            {/* Floating feelings container */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+              {feelings.map((feeling) => (
+                <button
+                  key={feeling.id}
+                  onClick={() => toggleFeeling(feeling.id)}
+                  className={`relative transition-all duration-300 rounded-lg p-3 flex items-center
+        ${
+          feeling.selected
+            ? "bg-gradient-to-r from-pink-600 to-purple-700 border-2 border-yellow-300 shadow-lg transform scale-105"
+            : "bg-gradient-to-r from-teal-700 to-blue-800 border border-teal-500 hover:border-teal-400 hover:shadow"
+        }`}
+                >
+                  <div className="flex-1 text-left">
+                    <span className={`${feeling.selected ? "text-white font-bold" : "text-white"}`}>
+                      {feeling.text}
+                    </span>
                   </div>
-                ))}
+                  {feeling.selected && <Heart className="h-5 w-5 ml-2 text-pink-300 fill-pink-300 animate-pulse" />}
+                </button>
+              ))}
+            </div>
+
+            {/* Selected feelings counter */}
+            <div className="bg-teal-800 bg-opacity-50 p-3 rounded-lg mb-4">
+              <div className="flex justify-between items-center">
+                <span className="text-white">選択した気持ち:</span>
+                <span className={`font-bold ${selectedFeelingsCount === 3 ? "text-green-400" : "text-yellow-300"}`}>
+                  {selectedFeelingsCount} / 3
+                </span>
+              </div>
+              <div className="w-full bg-teal-950 rounded-full h-2.5 mt-2">
+                <div
+                  className={`${
+                    selectedFeelingsCount === 3 ? "bg-green-500" : "bg-gradient-to-r from-pink-500 to-purple-500"
+                  } h-2.5 rounded-full transition-all duration-500`}
+                  style={{ width: `${(selectedFeelingsCount / 3) * 100}%` }}
+                ></div>
               </div>
             </div>
-          )}
 
-          {/* Add item form */}
-          {isAddingItem ? (
-            <div className="bg-teal-800 bg-opacity-50 p-4 rounded-lg border border-teal-700 mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-yellow-300">新しいアイテムを追加</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setIsAddingItem(false)
-                    tryPlayAudio()
-                  }}
-                  className="text-white hover:bg-teal-700"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="space-y-4">
-                {/* Image upload */}
-                <div>
-                  <label className="text-white font-medium block mb-2">アイテムの写真</label>
-
-                  {currentItem.image ? (
-                    <div className="relative w-full h-48 mb-2">
-                      <Image
-                        src={currentItem.image || "/placeholder.svg"}
-                        alt="アイテムの写真"
-                        fill
-                        className="object-contain rounded-lg border-2 border-teal-600"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full h-48 bg-teal-900 bg-opacity-50 rounded-lg border-2 border-dashed border-teal-600 flex flex-col items-center justify-center mb-2">
-                      <Upload className="h-12 w-12 text-teal-400 mb-2" />
-                      <p className="text-teal-300 text-center">写真をアップロードしてください</p>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={triggerFileInput}
-                      className="bg-teal-700 hover:bg-teal-800 text-white w-full flex items-center justify-center gap-2"
-                    >
-                      <Upload className="h-4 w-4" />
-                      写真をアップロード
-                    </Button>
-
-                    {isMobile && (
-                      <Button
-                        onClick={openCamera}
-                        className="bg-teal-700 hover:bg-teal-800 text-white flex items-center gap-2"
+            {/* Selected feelings display */}
+            <div className="bg-teal-800/30 rounded-lg p-4 border border-teal-700">
+              <h3 className="text-lg font-bold text-yellow-300 mb-3">選択した気持ち:</h3>
+              {selectedFeelingsCount === 0 ? (
+                <p className="text-teal-300 italic">まだ選択されていません</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {feelings
+                    .filter((f) => f.selected)
+                    .map((feeling) => (
+                      <div
+                        key={feeling.id}
+                        className="bg-gradient-to-r from-pink-600 to-purple-700 px-3 py-1 rounded-full text-white font-medium flex items-center gap-1"
                       >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                        </svg>
-                        カメラで撮影
-                      </Button>
-                    )}
-                  </div>
-
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    accept="image/*"
-                    className="hidden"
-                  />
+                        <Heart className="h-3 w-3 fill-pink-300" />
+                        {feeling.text}
+                      </div>
+                    ))}
                 </div>
-
-                {/* Item name */}
-                <div>
-                  <label htmlFor="itemName" className="text-white font-medium block mb-2">
-                    アイテム名
-                  </label>
-                  <Input
-                    id="itemName"
-                    value={currentItem.name}
-                    onChange={(e) => setCurrentItem({ ...currentItem, name: e.target.value })}
-                    placeholder="例：黒のTシャツ、デニムパンツなど"
-                    className="bg-teal-900 border-teal-600 text-white placeholder:text-teal-400"
-                    onClick={tryPlayAudio}
-                  />
-                </div>
-
-                {/* Item description */}
-                <div>
-                  <label htmlFor="itemDescription" className="text-white font-medium block mb-2">
-                    説明（任意）
-                  </label>
-                  <Textarea
-                    id="itemDescription"
-                    value={currentItem.description}
-                    onChange={(e) => setCurrentItem({ ...currentItem, description: e.target.value })}
-                    placeholder="例：お気に入りの服、よく着る服、サイズなど"
-                    className="bg-teal-900 border-teal-600 text-white placeholder:text-teal-400 h-20"
-                    onClick={tryPlayAudio}
-                  />
-                </div>
-
-                {/* Add button */}
-                <Button
-                  onClick={addItem}
-                  disabled={!currentItem.image || !currentItem.name}
-                  className="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white font-bold disabled:opacity-50"
-                >
-                  アイテムを追加
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button
-              onClick={() => {
-                setIsAddingItem(true)
-                tryPlayAudio()
-              }}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 mb-6 flex items-center justify-center gap-2"
-            >
-              <Plus className="h-5 w-5" />
-              新しいアイテムを追加
-            </Button>
-          )}
-
-          {/* Progress indicator */}
-          <div className="bg-teal-800 bg-opacity-50 p-4 rounded-lg mb-6">
-            <div className="flex justify-between items-center">
-              <span className="text-white">記録したアイテム:</span>
-              <span className={`font-bold ${items.length >= 5 ? "text-green-400" : "text-yellow-300"}`}>
-                {items.length} / 5 (最低目標)
-              </span>
-            </div>
-            <div className="w-full bg-teal-950 rounded-full h-2.5 mt-2">
-              <div
-                className="bg-gradient-to-r from-yellow-500 to-green-500 h-2.5 rounded-full"
-                style={{ width: `${Math.min((items.length / 5) * 100, 100)}%` }}
-              ></div>
+              )}
             </div>
           </div>
 
@@ -449,21 +349,40 @@ export default function Stage11BattlePage() {
                 tryPlayAudio()
                 saveRecord()
               }}
-              disabled={isSaving || items.length < 1}
-              className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold py-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              disabled={isSaving || selectedFeelingsCount !== 3}
+              className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold py-3 px-8 text-lg rounded-lg shadow-lg transform hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-2"
             >
               {isSaving ? (
                 "保存中..."
               ) : (
                 <>
                   <Save className="h-5 w-5" />
-                  記録を完了する
+                  気持ちを記録する
                 </>
               )}
             </Button>
           </div>
         </div>
       </main>
+
+      {/* CSS for floating animation */}
+      <style jsx global>{`
+        @keyframes pulse {
+          0% {
+            opacity: 0.7;
+          }
+          50% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 0.7;
+          }
+        }
+        
+        .animate-pulse {
+          animation: pulse 2s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   )
 }

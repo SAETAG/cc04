@@ -150,7 +150,7 @@ export default function Stage10ClearPage() {
           </h1>
 
           <p className="text-white text-lg sm:text-xl mb-6">
-            おめでとうございます！「最適化の聖域」ステージをクリアしました。
+            おめでとうございます！「収納の回廊」ステージをクリアしました。
             <br />
             あなたは収納のコツを学び、アイテムの最適な収納場所を決めることができました。
           </p>

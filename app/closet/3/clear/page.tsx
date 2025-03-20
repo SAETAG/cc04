@@ -150,7 +150,7 @@ export default function Stage3ClearPage() {
           </h1>
 
           <p className="text-white text-lg sm:text-xl mb-6">
-            おめでとうございます！「虚無の広間」ステージをクリアしました。
+            おめでとうございます！「解放の広間」ステージをクリアしました。
             <br />
             あなたはクローゼットの中身をすべて取り出し、何があるのか確認しました。
           </p>

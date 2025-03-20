@@ -169,9 +169,9 @@ export default function Stage4BattlePage() {
           <h2 className="text-2xl font-bold text-yellow-300 mb-6 text-center">お気に入りを選ぼう</h2>
 
           <p className="text-white mb-6 text-center">
-            クローゼットに戻すべき「お気に入り」と「1年以上着ているもの」を選び出し、「賢者の箱」へ入れましょう。
+            まずは、クローゼットに戻すべき「お気に入り」のみ選び出し、「賢者の箱」へ入れましょう。
             <br />
-            以下のリストを参考に、あなたのお気に入りを選んでください。
+            以下のリストを参考に、あなたにとって親友の様な服達を選んでください。
           </p>
 
           {/* Criteria checklist */}

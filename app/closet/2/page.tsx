@@ -180,29 +180,6 @@ export default function Stage2Page() {
             <div className="text-7xl animate-pulse">🎁</div>
           </div>
 
-          {/* Box descriptions */}
-          <div className="space-y-4 mb-8">
-            <div className="bg-teal-800 bg-opacity-50 p-4 rounded-lg border border-teal-700">
-              <h3 className="text-lg font-bold text-yellow-300 mb-2">「虚無の箱」</h3>
-              <p className="text-white">断捨離の決意により、捨てるもの</p>
-            </div>
-
-            <div className="bg-teal-800 bg-opacity-50 p-4 rounded-lg border border-teal-700">
-              <h3 className="text-lg font-bold text-yellow-300 mb-2">「賢者の箱」</h3>
-              <p className="text-white">賢く選ばれし、クローゼットへ収納されるもの</p>
-            </div>
-
-            <div className="bg-teal-800 bg-opacity-50 p-4 rounded-lg border border-teal-700">
-              <h3 className="text-lg font-bold text-yellow-300 mb-2">「転送の箱」</h3>
-              <p className="text-white">クローゼット以外の場所へ移すもの</p>
-            </div>
-
-            <div className="bg-teal-800 bg-opacity-50 p-4 rounded-lg border border-teal-700">
-              <h3 className="text-lg font-bold text-yellow-300 mb-2">「運命の箱」</h3>
-              <p className="text-white">今すぐ捨てることができない、いつかその運命をまつ者たちの箱</p>
-            </div>
-          </div>
-
           {/* Action buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button

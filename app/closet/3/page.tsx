@@ -168,7 +168,7 @@ export default function Stage3Page() {
           {/* Stage title and description */}
           <div className="text-center mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold text-yellow-300 mb-4 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]">
-              虚無の広間　～全てを取り出せ～
+              解放の広間　～全てを取り出せ～
             </h1>
             <p className="text-white text-base sm:text-lg">
               クローゼットの中身をすべて取り出し、真の姿を明らかにしよう。隠れた宝物や忘れられた思い出が見つかるかもしれない。
@@ -177,7 +177,7 @@ export default function Stage3Page() {
 
           {/* Box icon */}
           <div className="flex justify-center mb-8">
-            <div className="text-7xl animate-pulse">📦</div>
+            <div className="text-7xl animate-pulse">🚀</div>
           </div>
 
           {/* Action buttons */}

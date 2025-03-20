@@ -198,24 +198,14 @@ export default function Stage13Page() {
           {/* Stage title and description */}
           <div className="text-center mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold text-yellow-300 mb-4 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]">
-              最終確認の間 ～真の快適さを求めて～
+              帰還の里 ～全てのものに、ふるさとを～
             </h1>
-            <p className="text-white text-base sm:text-lg">収納後のクローゼットを再チェックし、真の快適さを求めろ！</p>
+            <p className="text-white text-base sm:text-lg">もうこれで、皆の還る場所は決まった</p>
           </div>
 
-          {/* Mission details */}
-          <div className="bg-purple-950 bg-opacity-50 p-4 rounded-lg mb-8 border border-yellow-500">
-            <h3 className="text-xl font-bold mb-4 text-center text-yellow-300">ミッション</h3>
-            <p className="text-white mb-4">最終チェックに沿って本当に今の収納場所でいいかチェックしよう！</p>
-            <ul className="list-disc pl-6 space-y-2 text-white">
-              <li>もう捨てるものはないか？</li>
-              <li>移動するものはないか？</li>
-              <li>使用頻度の高い順に配置できているか？</li>
-              <li>収納の中が詰め込みすぎていないか？</li>
-              <li>あと一歩、おしゃれにできるところはないか？</li>
-            </ul>
+          <div className="flex justify-center mb-8">
+            <div className="text-7xl animate-pulse">🏠</div>
           </div>
-
           {/* Action buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button

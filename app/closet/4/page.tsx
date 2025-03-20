@@ -171,22 +171,13 @@ export default function Stage4Page() {
               選ばれし者　～お気に入りを選ぶ～
             </h1>
             <p className="text-white text-base sm:text-lg">
-              クローゼットに戻すべき「お気に入り」と「1年以上着ているもの」を選び出し、「賢者の箱」へ入れましょう。
+              クローゼットに戻すべき「お気に入り」を選び出し、「賢者の箱」へ入れよう。
             </p>
           </div>
 
           {/* Heart icon */}
           <div className="flex justify-center mb-8">
             <div className="text-7xl animate-pulse">💖</div>
-          </div>
-
-          {/* Criteria list */}
-          <div className="bg-teal-800 bg-opacity-50 p-4 rounded-lg mb-8 text-white">
-            <h3 className="text-xl font-bold text-yellow-300 mb-4">選ぶ基準</h3>
-            <ul className="space-y-2 list-disc list-inside">
-              <li>毎日・週1回以上使うもの</li>
-              <li>冠婚葬祭・季節もの（1年以上着ている）</li>
-            </ul>
           </div>
 
           {/* Action buttons */}

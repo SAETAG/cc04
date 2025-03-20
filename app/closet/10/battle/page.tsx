@@ -184,7 +184,7 @@ export default function Stage10BattlePage() {
           </Link>
           <div className="flex items-center">
             <span className="text-lg sm:text-2xl font-bold text-yellow-300 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)] px-2">
-              最適化の聖域 - 戦闘フェーズ
+              収納の回廊 - 戦闘フェーズ
             </span>
           </div>
         </div>
@@ -216,9 +216,11 @@ export default function Stage10BattlePage() {
           <h2 className="text-2xl font-bold text-yellow-300 mb-6 text-center">収納場所を決める</h2>
 
           <p className="text-white mb-6 text-center">
-            使用頻度に基づいて、最適な収納場所を決めましょう。
+            今、「賢者の箱」はアイテムや使用頻度毎にグルーピングされているはずじゃ。
             <br />
-            ��伝「使用頻度準に真ん中→下→上。奥ゆきがあれば奥→手前」
+            さぁ、一つ一つをクローゼットに収納していこう。
+             <br />
+            以下のコツをチェックしながら、「お気に入り」達をしまっていこう！
           </p>
 
           {/* Storage tips tabs */}

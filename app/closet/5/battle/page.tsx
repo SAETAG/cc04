@@ -199,19 +199,23 @@ export default function Stage5BattlePage() {
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center p-4 overflow-auto">
         <div className="max-w-2xl w-full bg-gradient-to-b from-purple-900 to-teal-900 rounded-lg p-6 border-2 border-yellow-500 shadow-lg mb-8">
-          <h2 className="text-2xl font-bold text-yellow-300 mb-6 text-center">断捨離リストを「虚無の箱」へ</h2>
+          <h2 className="text-2xl font-bold text-yellow-300 mb-6 text-center">断捨離リストを「断捨離の箱」へ</h2>
 
           <p className="text-white mb-6 text-center">
-            以下のリストを参考に、「虚無の箱」へ入れるアイテムを選びましょう。
+            あなたに、真実を伝えよう。
             <br />
-            どうしても捨てるか迷うものは「運命の箱」に、他の場所に移すものは「転送の箱」に入れてください。
+            今、「賢者の箱」に入っていないモノは全て、捨てるべきものだ。
             <br />
-            少なくとも5つ以上のアイテムを「虚無の箱」へ入れることを目指しましょう。
+            さぁ、全てを「断捨離の箱」へ入れよう。
+            <br />
+            ただし、どうしても今別れを告げられないモノは「運命の箱」へ入れても良い。
+            <br />
+            他の場所へ移すべきものは「転送の箱」へ入れてしまおう。
           </p>
 
           {/* Discard checklist */}
           <div className="mb-8">
-            <h3 className="text-xl font-bold text-yellow-300 mb-4">虚無の箱へ入れる��スト</h3>
+            <h3 className="text-xl font-bold text-yellow-300 mb-4">断捨離の箱へ入れるべきリスト</h3>
 
             <div className="space-y-4">
               <div className="flex items-start space-x-4 bg-teal-800 bg-opacity-50 p-4 rounded-lg border border-teal-700">
@@ -545,10 +549,6 @@ export default function Stage5BattlePage() {
                   placeholder="任意入力"
                 />
               </div>
-
-              <p className="text-sm text-gray-600 italic mb-4">
-                ※ぜひ、アプリの評価をご投稿ください！案内所からも投稿できます☆
-              </p>
 
               <button
                 onClick={submitFeedback}

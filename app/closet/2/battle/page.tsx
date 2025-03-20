@@ -4,8 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Volume2, VolumeX, ArrowLeft, Home, CheckCircle2 } from "lucide-react"
+import { Volume2, VolumeX, ArrowLeft, Home, CheckCircle2, Trash2, Archive, FolderOutput, Clock } from "lucide-react"
 
 export default function Stage2BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
@@ -13,84 +12,117 @@ export default function Stage2BattlePage() {
   const [audioLoaded, setAudioLoaded] = useState(false)
   const [boxesReady, setBoxesReady] = useState([false, false, false, false])
   const [isSaving, setIsSaving] = useState(false)
+  const [isClient, setIsClient] = useState(false)
   const router = useRouter()
 
-  // シンプルな音声初期化
+  // クライアントサイドでのみ実行されるようにする
   useEffect(() => {
-    // モバイルでの自動再生制限に対応するため、ユーザーインタラクション前にオーディオを準備するだけにする
-    const audioElement = new Audio("/stepfight_2.mp3")
-    audioElement.loop = true
-    audioElement.volume = 0.7
-    audioElement.preload = "auto"
-
-    // オーディオの読み込み状態を監視
-    audioElement.addEventListener("canplaythrough", () => {
-      setAudioLoaded(true)
-      console.log("Audio loaded and ready to play")
-    })
-
-    audioElement.addEventListener("error", (e) => {
-      console.error("Audio loading error:", e)
-    })
-
-    setAudio(audioElement)
-
-    return () => {
-      audioElement.pause()
-      audioElement.src = ""
-    }
+    setIsClient(true)
   }, [])
+
+  // シンプルな音声初期化 - クライアントサイドでのみ実行
+  useEffect(() => {
+    if (!isClient) return
+
+    try {
+      // モバイルでの自動再生制限に対応するため、ユーザーインタラクション前にオーディオを準備するだけにする
+      const audioElement = new Audio("/stepfight_2.mp3")
+      audioElement.loop = true
+      audioElement.volume = 0.7
+      audioElement.preload = "auto"
+
+      // オーディオの読み込み状態を監視
+      audioElement.addEventListener("canplaythrough", () => {
+        setAudioLoaded(true)
+        console.log("Audio loaded and ready to play")
+      })
+
+      // エラーハンドリングを改善
+      audioElement.addEventListener("error", () => {
+        console.log("Audio could not be loaded, continuing without sound")
+        // エラーが発生してもアプリは続行できるようにする
+        setAudioLoaded(false)
+      })
+
+      setAudio(audioElement)
+
+      return () => {
+        if (audioElement) {
+          audioElement.pause()
+          audioElement.src = ""
+        }
+      }
+    } catch (error) {
+      console.log("Audio initialization error, continuing without sound:", error)
+      setAudioLoaded(false)
+    }
+  }, [isClient])
 
   // ページ表示後に一度だけ再生を試みる
   useEffect(() => {
-    if (audio && audioLoaded) {
+    if (!isClient || !audio || !audioLoaded) return
+
+    try {
       // モバイルでは自動再生できないことが多いが、一応試みる
       const playPromise = audio.play()
 
       if (playPromise !== undefined) {
-        playPromise.catch((error) => {
-          console.log("Initial auto-play was prevented:", error)
+        playPromise.catch(() => {
           // エラーは想定内なので何もしない
+          console.log("Initial auto-play was prevented, waiting for user interaction")
         })
       }
+    } catch (error) {
+      console.log("Play attempt failed, continuing without sound")
     }
-  }, [audio, audioLoaded])
+  }, [audio, audioLoaded, isClient])
 
   // ミュート状態が変更されたときに適用
   useEffect(() => {
-    if (audio) {
+    if (!audio || !isClient || !audioLoaded) return
+
+    try {
       audio.muted = isMuted
 
       // ミュート解除時に再生を試みる
-      if (!isMuted && audio.paused && audioLoaded) {
+      if (!isMuted && audio.paused) {
         const playPromise = audio.play()
 
         if (playPromise !== undefined) {
-          playPromise.catch((error) => {
-            console.log("Play on unmute failed:", error)
+          playPromise.catch(() => {
+            console.log("Play on unmute failed, waiting for user interaction")
           })
         }
       }
+    } catch (error) {
+      console.log("Audio control error, continuing without sound")
     }
-  }, [isMuted, audio, audioLoaded])
+  }, [isMuted, audio, audioLoaded, isClient])
 
   // 画面タップで再生を試みる関数
   const tryPlayAudio = () => {
-    if (audio && audio.paused && !isMuted && audioLoaded) {
-      // ユーザーインタラクションの中で再生を試みる（モバイルで重要）
-      const playPromise = audio.play()
+    if (!audio || !isClient || !audioLoaded) return
 
-      if (playPromise !== undefined) {
-        playPromise.catch((error) => {
-          console.log("Play on screen tap failed:", error)
-        })
+    try {
+      if (audio.paused && !isMuted) {
+        // ユーザーインタラクションの中で再生を試みる（モバイルで重要）
+        const playPromise = audio.play()
+
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            console.log("Play on screen tap failed")
+          })
+        }
       }
+    } catch (error) {
+      console.log("Play attempt failed, continuing without sound")
     }
   }
 
   // Toggle mute
   const toggleMute = () => {
     setIsMuted(!isMuted)
+    tryPlayAudio()
   }
 
   // Toggle box ready state
@@ -130,7 +162,7 @@ export default function Stage2BattlePage() {
   }
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
+    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={isClient ? tryPlayAudio : undefined}>
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
         {/* Decorative corners */}
@@ -185,81 +217,93 @@ export default function Stage2BattlePage() {
           <p className="text-white mb-6 text-center">
             箱、袋、またはスペースを4つ用意して、アイテムを分類する準備をしましょう。
             <br />
-            用意できたらチェックを入れてください。
+            用意できたらカードをタップしてチェックを入れてください。
           </p>
 
-          <div className="space-y-4 mb-8">
-            <div className="flex items-center space-x-4 bg-teal-800 bg-opacity-50 p-4 rounded-lg border border-teal-700">
-              <Checkbox
-                id="box1"
-                checked={boxesReady[0]}
-                onCheckedChange={() => toggleBoxReady(0)}
-                className="data-[state=checked]:bg-yellow-500 data-[state=checked]:text-purple-900 border-2 border-yellow-300 h-6 w-6"
-              />
+          <div className="space-y-6 mb-8">
+            {/* 断捨離の箱 */}
+            <div
+              onClick={() => toggleBoxReady(0)}
+              className={`w-full flex items-start space-x-4 bg-gradient-to-r from-red-900 to-red-800 p-5 rounded-lg border-2 ${
+                boxesReady[0] ? "border-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.3)]" : "border-red-700"
+              } shadow-md transition-all duration-300 hover:shadow-lg hover:border-red-600 text-left cursor-pointer`}
+            >
               <div className="flex-1">
-                <label htmlFor="box1" className="text-lg font-bold text-yellow-300 cursor-pointer">
-                  「虚無の箱」
-                </label>
-                <p className="text-white text-sm">断捨離の決意により、捨てるもの</p>
+                <div className="flex items-center">
+                  <Trash2 className="h-6 w-6 text-red-300 mr-2" />
+                  <span className="text-lg font-bold text-yellow-300">「断捨離の箱」</span>
+                </div>
+                <p className="text-white text-sm mt-1">断捨離の決意により、捨てるもの</p>
               </div>
-              {boxesReady[0] && <CheckCircle2 className="h-6 w-6 text-green-400" />}
+              <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-2 border-yellow-300">
+                {boxesReady[0] && <CheckCircle2 className="h-6 w-6 text-green-400" />}
+              </div>
             </div>
 
-            <div className="flex items-center space-x-4 bg-teal-800 bg-opacity-50 p-4 rounded-lg border border-teal-700">
-              <Checkbox
-                id="box2"
-                checked={boxesReady[1]}
-                onCheckedChange={() => toggleBoxReady(1)}
-                className="data-[state=checked]:bg-yellow-500 data-[state=checked]:text-purple-900 border-2 border-yellow-300 h-6 w-6"
-              />
+            {/* 賢者の箱 */}
+            <div
+              onClick={() => toggleBoxReady(1)}
+              className={`w-full flex items-start space-x-4 bg-gradient-to-r from-blue-900 to-blue-800 p-5 rounded-lg border-2 ${
+                boxesReady[1] ? "border-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.3)]" : "border-blue-700"
+              } shadow-md transition-all duration-300 hover:shadow-lg hover:border-blue-600 text-left cursor-pointer`}
+            >
               <div className="flex-1">
-                <label htmlFor="box2" className="text-lg font-bold text-yellow-300 cursor-pointer">
-                  「賢者の箱」
-                </label>
-                <p className="text-white text-sm">賢く選ばれし、クローゼットへ収納されるもの</p>
+                <div className="flex items-center">
+                  <Archive className="h-6 w-6 text-blue-300 mr-2" />
+                  <span className="text-lg font-bold text-yellow-300">「賢者の箱」</span>
+                </div>
+                <p className="text-white text-sm mt-1">賢く選ばれし、クローゼットへ収納されるもの</p>
               </div>
-              {boxesReady[1] && <CheckCircle2 className="h-6 w-6 text-green-400" />}
+              <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-2 border-yellow-300">
+                {boxesReady[1] && <CheckCircle2 className="h-6 w-6 text-green-400" />}
+              </div>
             </div>
 
-            <div className="flex items-center space-x-4 bg-teal-800 bg-opacity-50 p-4 rounded-lg border border-teal-700">
-              <Checkbox
-                id="box3"
-                checked={boxesReady[2]}
-                onCheckedChange={() => toggleBoxReady(2)}
-                className="data-[state=checked]:bg-yellow-500 data-[state=checked]:text-purple-900 border-2 border-yellow-300 h-6 w-6"
-              />
+            {/* 転送の箱 */}
+            <div
+              onClick={() => toggleBoxReady(2)}
+              className={`w-full flex items-start space-x-4 bg-gradient-to-r from-green-900 to-green-800 p-5 rounded-lg border-2 ${
+                boxesReady[2] ? "border-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.3)]" : "border-green-700"
+              } shadow-md transition-all duration-300 hover:shadow-lg hover:border-green-600 text-left cursor-pointer`}
+            >
               <div className="flex-1">
-                <label htmlFor="box3" className="text-lg font-bold text-yellow-300 cursor-pointer">
-                  「転送の箱」
-                </label>
-                <p className="text-white text-sm">クローゼット以外の場所へ移すもの</p>
+                <div className="flex items-center">
+                  <FolderOutput className="h-6 w-6 text-green-300 mr-2" />
+                  <span className="text-lg font-bold text-yellow-300">「転送の箱」</span>
+                </div>
+                <p className="text-white text-sm mt-1">クローゼット以外の場所へ移すもの</p>
               </div>
-              {boxesReady[2] && <CheckCircle2 className="h-6 w-6 text-green-400" />}
+              <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-2 border-yellow-300">
+                {boxesReady[2] && <CheckCircle2 className="h-6 w-6 text-green-400" />}
+              </div>
             </div>
 
-            <div className="flex items-center space-x-4 bg-teal-800 bg-opacity-50 p-4 rounded-lg border border-teal-700">
-              <Checkbox
-                id="box4"
-                checked={boxesReady[3]}
-                onCheckedChange={() => toggleBoxReady(3)}
-                className="data-[state=checked]:bg-yellow-500 data-[state=checked]:text-purple-900 border-2 border-yellow-300 h-6 w-6"
-              />
+            {/* 運命の箱 */}
+            <div
+              onClick={() => toggleBoxReady(3)}
+              className={`w-full flex items-start space-x-4 bg-gradient-to-r from-amber-900 to-amber-800 p-5 rounded-lg border-2 ${
+                boxesReady[3] ? "border-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.3)]" : "border-amber-700"
+              } shadow-md transition-all duration-300 hover:shadow-lg hover:border-amber-600 text-left cursor-pointer`}
+            >
               <div className="flex-1">
-                <label htmlFor="box4" className="text-lg font-bold text-yellow-300 cursor-pointer">
-                  「運命の箱」
-                </label>
-                <p className="text-white text-sm">今すぐ捨てることができない、いつかその運命をまつ者たちの箱</p>
+                <div className="flex items-center">
+                  <Clock className="h-6 w-6 text-amber-300 mr-2" />
+                  <span className="text-lg font-bold text-yellow-300">「運命の箱」</span>
+                </div>
+                <p className="text-white text-sm mt-1">今すぐ捨てることができない、いつかその運命をまつ者たちの箱</p>
               </div>
-              {boxesReady[3] && <CheckCircle2 className="h-6 w-6 text-green-400" />}
+              <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-2 border-yellow-300">
+                {boxesReady[3] && <CheckCircle2 className="h-6 w-6 text-green-400" />}
+              </div>
             </div>
           </div>
 
           {/* Submit button */}
-          <div className="flex justify-center mt-6">
+          <div className="flex justify-center mt-8">
             <Button
               onClick={saveRecord}
               disabled={isSaving || !allBoxesReady}
-              className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold py-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold py-4 px-10 text-xl rounded-lg shadow-lg transform hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {isSaving ? "保存中..." : "準備完了！"}
             </Button>
