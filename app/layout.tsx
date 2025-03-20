@@ -31,6 +31,8 @@ export default function RootLayout({
           `,
           }}
         />
+
+        {/* CDNからのPlayFab SDKの読み込みを削除 */}
       </head>
       <body suppressHydrationWarning>{children}</body>
     </html>
