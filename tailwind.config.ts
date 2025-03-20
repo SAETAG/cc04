@@ -84,11 +84,43 @@ const config = {
             opacity: "0",
           },
         },
+        float: {
+          "0%": {
+            transform: "translateY(0) rotate(0deg)",
+          },
+          "50%": {
+            transform: "translateY(-10px) rotate(5deg)",
+          },
+          "100%": {
+            transform: "translateY(0) rotate(0deg)",
+          },
+        },
+        "magical-appear": {
+          "0%": {
+            opacity: "0",
+            transform: "translateY(10px)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "translateY(0)",
+          },
+        },
+        shine: {
+          "0%": {
+            transform: "translateX(-100%) rotate(45deg)",
+          },
+          "100%": {
+            transform: "translateX(100%) rotate(45deg)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         falling: "falling var(--duration, 15s) linear var(--delay, 0s) infinite",
+        float: "float 6s ease-in-out infinite",
+        "magical-appear": "magical-appear 1s ease forwards",
+        shine: "shine 2s infinite",
       },
     },
   },
