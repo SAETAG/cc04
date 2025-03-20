@@ -184,15 +184,7 @@ export default function UserPage() {
             </div>
           </div>
 
-          {/* Items Button */}
-          <div className="mt-8">
-            <Link href="/get_item">
-              <Button className="w-full bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white font-bold py-3 rounded-lg border border-yellow-500 shadow-md flex items-center justify-center gap-2">
-                <Package className="h-5 w-5" />
-                <span>これまで獲得したアイテム</span>
-              </Button>
-            </Link>
-          </div>
+          
         </div>
       </main>
     </div>
