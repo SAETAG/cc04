@@ -123,7 +123,7 @@ export default function LakePage() {
   // Initialize audio on client side
   useEffect(() => {
     // Create audio element
-    audioRef.current = new Audio("/forest.mp3") // 後で lake.mp3 に変更
+    audioRef.current = new Audio("/lake.mp3") // 後で lake.mp3 に変更
 
     if (audioRef.current) {
       // Set audio properties
@@ -294,7 +294,7 @@ export default function LakePage() {
 
       {/* Top navigation bar */}
       <div className="fixed top-0 left-0 right-0 z-50 p-2 flex items-center justify-between">
-        <Link href="/forest">
+        <Link href="/home">
           <Button
             size="icon"
             variant="ghost"
