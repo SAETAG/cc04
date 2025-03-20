@@ -1,389 +1,169 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import Image from "next/image"
+import { useState, useEffect, useRef } from "react"
+import { QuestHeader } from "@/components/quest-header"
+import { ChallengeCard } from "@/components/challenge-card"
+import { challenges } from "@/lib/data"
+import { FallingLeaves } from "@/components/falling-leaves"
+import { Volume2, VolumeX, Home } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Volume2, VolumeX, ArrowLeft, Home } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"
-import { Checkbox } from "@/components/ui/checkbox"
+import Link from "next/link"
 
-// Card data
-const infoCards = [
-  {
-    id: "mochan",
-    title: "モーちゃんについて",
-    content:
-      "モーちゃんは、整理収納のあらゆる知識を有するおかたづけマスターです。お片付けで迷ったことがあったら、ホーム画面のチャットでモーちゃんに話しかけてみましょう♪",
-    hasImage: true,
-    imageSrc: "/cow-fairy.webp",
-    imageAlt: "モーちゃん",
-    icon: "🧚‍♀️",
-  },
-  {
-    id: "pub",
-    title: "酒場について",
-    content: "酒場では、自分の戦果報告や、他の人の整理収納チップスを見ることができます。ぜひ飲みに来てくださいね！",
-    hasImage: false,
-    icon: "🍺",
-  },
-  {
-    id: "kingdom",
-    title: "クローゼット王国について",
-    content:
-      "あなたが冒険をするダンジョンです！ステージをクリアしたら、次回ログインした時はその次のステージからプレイできるようになります。",
-    hasImage: false,
-    icon: "🏰",
-  },
-  {
-    id: "treasury",
-    title: "マイコレクションについて",
-    content: "マイコレクションでは、あなたの持ち物リストが見れます。ぜひ、全部のお洋服のリスト化を目指してくださいね！",
-    hasImage: false,
-    icon: "💰",
-  },
-  {
-    id: "feedback",
-    title: "フィードバックを送る",
-    content:
-      "アプリの改善のため、ぜひあなたの意見をお聞かせください。フィードバックはアプリの品質向上に役立てさせていただきます。",
-    hasImage: false,
-    icon: "📝",
-    isFeedback: true,
-  },
-]
+export default function ForestChallenge() {
+  const [userChallenges, setUserChallenges] = useState(challenges)
+  const [userExp, setUserExp] = useState(0)
+  const [showReward, setShowReward] = useState<{ exp: number; item?: string } | null>(null)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
-export default function InformationPage() {
-  const [isMuted, setIsMuted] = useState(false)
-  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
-  const [rating, setRating] = useState(0)
-  const [goodPoints, setGoodPoints] = useState("")
-  const [improvementPoints, setImprovementPoints] = useState("")
-  const [unnecessaryFeatures, setUnnecessaryFeatures] = useState<string[]>([])
-  const [desiredFeatures, setDesiredFeatures] = useState<string[]>([])
-  const [otherFeedback, setOtherFeedback] = useState("")
-
-  // Initialize audio - シンプルな方法で初期化
+  // Initialize audio on client side
   useEffect(() => {
-    const audioElement = new Audio("/information.mp3")
-    audioElement.loop = true
-    audioElement.volume = 0.7
-    setAudio(audioElement)
+    // Create audio element
+    audioRef.current = new Audio("/forest.mp3")
 
-    try {
-      audioElement.play().catch((error) => {
-        console.log("Auto-play was prevented:", error)
-      })
-    } catch (error) {
-      console.log("Audio play error:", error)
+    if (audioRef.current) {
+      // Set audio properties
+      audioRef.current.loop = true
+      audioRef.current.volume = 0.5
+
+      // Play audio if sound is enabled
+      if (soundEnabled) {
+        audioRef.current.play().catch((error) => {
+          console.log("Audio autoplay failed:", error)
+          // Many browsers require user interaction before playing audio
+        })
+      }
     }
 
+    // Cleanup function
     return () => {
-      audioElement.pause()
-      audioElement.src = ""
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
     }
   }, [])
 
-  // ミュート状態が変更されたときに適用
+  // Handle sound toggle
   useEffect(() => {
-    if (audio) {
-      audio.muted = isMuted
-
-      // ミュート解除時に再生を試みる
-      if (!isMuted && audio.paused) {
-        try {
-          audio.play().catch((error) => {
-            console.log("Play on unmute failed:", error)
-          })
-        } catch (error) {
-          console.log("Play error:", error)
-        }
-      }
-    }
-  }, [isMuted, audio])
-
-  // Toggle mute
-  const toggleMute = () => {
-    setIsMuted(!isMuted)
-  }
-
-  // Reset feedback form when dialog closes
-  const resetFeedbackForm = () => {
-    setRating(0)
-    setGoodPoints("")
-    setImprovementPoints("")
-    setUnnecessaryFeatures([])
-    setDesiredFeatures([])
-    setOtherFeedback("")
-  }
-
-  // Handle star rating click
-  const handleRatingClick = (selectedRating: number) => {
-    setRating(selectedRating)
-  }
-
-  // Handle form submission
-  const handleSubmitFeedback = () => {
-    console.log("Feedback submitted:", {
-      rating,
-      unnecessaryFeatures,
-      desiredFeatures,
-      otherFeedback,
-    })
-    // Here you would typically send this data to your backend
-
-    // Reset form after submission
-    resetFeedbackForm()
-
-    // Close dialog (would need to control dialog open state to do this programmatically)
-    // For now, we'll rely on the DialogClose component
-  }
-
-  // 画面タップで再生を試みる関数
-  const tryPlayAudio = () => {
-    if (audio && audio.paused && !isMuted) {
-      try {
-        audio.play().catch((error) => {
-          console.log("Play on screen tap failed:", error)
+    if (audioRef.current) {
+      if (soundEnabled) {
+        audioRef.current.play().catch((error) => {
+          console.log("Audio play failed:", error)
         })
-      } catch (error) {
-        console.log("Play error:", error)
+      } else {
+        audioRef.current.pause()
       }
     }
+  }, [soundEnabled])
+
+  // Toggle sound function
+  const toggleSound = () => {
+    setSoundEnabled((prev) => !prev)
+  }
+
+  // 効果音用の参照を追加
+  const effectSoundRef = useRef<HTMLAudioElement | null>(null)
+
+  // Play completion sound effect
+  const playCompletionSound = () => {
+    // 効果音なし - バックグラウンド音楽のみ
+  }
+
+  const completeChallenge = (id: string) => {
+    setUserChallenges((prev) =>
+      prev.map((challenge) => {
+        if (challenge.id === id && !challenge.completed) {
+          // Show reward animation
+          setShowReward({ exp: challenge.expReward, item: challenge.itemReward })
+          setTimeout(() => setShowReward(null), 3000)
+
+          // Add experience
+          setUserExp((prev) => prev + challenge.expReward)
+
+          // 効果音は不要なので削除
+
+          return { ...challenge, completed: true }
+        }
+        return challenge
+      }),
+    )
   }
 
   return (
-    <div className="min-h-screen bg-blue-950 flex flex-col" onClick={tryPlayAudio}>
-      {/* Header */}
-      <header className="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
-        {/* Decorative corners */}
-        <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-yellow-500"></div>
-        <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-yellow-500"></div>
-        <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-yellow-500"></div>
-        <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-yellow-500"></div>
-
-        <div className="flex items-center gap-2">
-          <Link href="/home">
-            <Button
-              variant="outline"
-              size="icon"
-              className="bg-blue-800 border-yellow-600 text-white hover:bg-blue-700 h-8 w-8 sm:h-10 sm:w-10"
-            >
-              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
-          </Link>
-          <h1 className="text-lg sm:text-2xl font-bold text-yellow-300 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)] px-2">
-            案内所
-          </h1>
-        </div>
-
-        <div className="flex gap-2">
-          {/* BGM on/off button */}
+    <div className="min-h-screen bg-gradient-to-b from-green-950 to-orange-800 text-white relative overflow-hidden">
+      {/* Top navigation bar - icons only */}
+      <div className="fixed top-0 right-0 z-50 p-2 flex items-center gap-2">
+        <Link href="/home">
           <Button
-            variant="outline"
             size="icon"
-            className="bg-blue-800 border-yellow-600 text-white hover:bg-blue-700 h-8 w-8 sm:h-10 sm:w-10"
-            onClick={toggleMute}
+            variant="ghost"
+            className="w-10 h-10 rounded-full bg-amber-900/60 text-yellow-300 hover:text-yellow-200 hover:bg-amber-800/70 border border-yellow-500/30"
           >
-            {isMuted ? <VolumeX className="h-4 w-4 sm:h-5 sm:w-5" /> : <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />}
+            <Home className="w-5 h-5" />
+            <span className="sr-only">ホーム</span>
           </Button>
+        </Link>
 
-          {/* Home button */}
-          <Link href="/home">
-            <Button
-              variant="outline"
-              size="icon"
-              className="bg-blue-800 border-yellow-600 text-white hover:bg-blue-700 h-8 w-8 sm:h-10 sm:w-10"
-            >
-              <Home className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
-          </Link>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="w-10 h-10 rounded-full bg-amber-900/60 text-yellow-300 hover:text-yellow-200 hover:bg-amber-800/70 border border-yellow-500/30"
+          onClick={toggleSound}
+        >
+          {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+          <span className="sr-only">{soundEnabled ? "サウンド オン" : "サウンド オフ"}</span>
+        </Button>
+      </div>
+
+      {/* Forest background elements */}
+      <div className="absolute inset-0 z-0 opacity-10">
+        <div className="absolute top-0 left-0 w-full h-full bg-[url('/placeholder.svg?height=200&width=200')] bg-repeat" />
+      </div>
+      <FallingLeaves />
+
+      {/* Leaves decoration */}
+      <div className="absolute top-0 right-0 w-32 h-32 opacity-30">
+        <div className="absolute top-10 right-10 w-20 h-20 rounded-full bg-green-300 rotate-45" />
+        <div className="absolute top-5 right-20 w-16 h-16 rounded-full bg-green-400 rotate-12" />
+        <div className="absolute top-20 right-5 w-24 h-12 rounded-full bg-green-500 -rotate-12" />
+      </div>
+
+      {/* Gold decorative elements */}
+      <div className="absolute left-0 right-0 top-16 h-40 overflow-hidden opacity-20 z-0">
+        <div className="absolute top-0 left-1/4 w-32 h-32 rounded-full bg-yellow-400 blur-xl" />
+        <div className="absolute top-10 right-1/3 w-40 h-40 rounded-full bg-amber-500 blur-xl" />
+        <div className="absolute top-5 left-2/3 w-24 h-24 rounded-full bg-yellow-500 blur-xl" />
+      </div>
+
+      <div className="relative z-10 container mx-auto px-4 py-8 mt-6">
+        {/* Full width header with user profile inside */}
+        <div className="w-full mb-8">
+          <QuestHeader exp={userExp} />
         </div>
-      </header>
 
-      {/* Main content */}
-      <main className="flex-1 p-4 md:p-8">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-yellow-300 mb-6 text-center drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]">
-            クローゼット王国の案内
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
-            {infoCards.map((card) => (
-              <Dialog key={card.id} onOpenChange={(open) => !open && card.id === "feedback" && resetFeedbackForm()}>
-                <DialogTrigger asChild>
-                  <Card className="bg-blue-800/80 border-2 border-blue-600 hover:border-yellow-400 hover:shadow-[0_0_15px_rgba(250,204,21,0.3)] transition-all duration-300 cursor-pointer h-full">
-                    <CardContent className="p-6 flex flex-col items-center justify-center h-full">
-                      <div className="text-4xl mb-4">{card.icon}</div>
-                      <h3 className="text-xl font-bold text-yellow-300 text-center mb-2">{card.title}</h3>
-                      <p className="text-blue-200 text-center line-clamp-2">{card.content.substring(0, 60)}...</p>
-                    </CardContent>
-                  </Card>
-                </DialogTrigger>
-                <DialogContent
-                  className={`${card.id === "feedback" ? "bg-gradient-to-b from-white to-pink-100" : "bg-gradient-to-b from-blue-900 to-blue-950"} border-2 border-yellow-500 max-w-md w-full overflow-y-auto max-h-[90vh]`}
-                >
-                  <DialogHeader>
-                    <DialogTitle
-                      className={`text-xl font-bold ${card.id === "feedback" ? "text-purple-800" : "text-yellow-300"} text-center mb-4`}
-                    >
-                      {card.id === "feedback" ? "アプリに関するフィードバックのお願い" : card.title}
-                    </DialogTitle>
-                  </DialogHeader>
-                  {card.id === "feedback" ? (
-                    <div className="space-y-4 animate-in fade-in duration-500">
-                      <div className="space-y-2">
-                        <label className="block text-purple-800 font-medium">このアプリの評価をお聞かせください</label>
-                        <div className="flex justify-center space-x-2">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button
-                              key={star}
-                              onClick={() => handleRatingClick(star)}
-                              className={`text-3xl ${star <= rating ? "text-yellow-400" : "text-gray-300"} hover:text-yellow-500 transition-colors`}
-                              aria-label={`${star}つ星`}
-                            >
-                              ★
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-purple-800 font-medium">
-                          1. 無くてもいいと思った機能（複数選択可、1つ以上必須）
-                        </label>
-                        <div className="space-y-2">
-                          {[
-                            { id: "feature1", label: "酒場の成果報告機能" },
-                            { id: "feature2", label: "酒場の整理収納知識の共有機能" },
-                            { id: "feature3", label: "マイコレクション（持ち物の写真一覧表示）の機能" },
-                            { id: "feature4", label: "モーちゃん（AI）機能" },
-                            { id: "feature5", label: "クローゼット王国の片づけ14ステップ（もっと少ステップでいい）" },
-                            { id: "feature6", label: "特になし" },
-                          ].map((feature) => (
-                            <div key={feature.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={feature.id}
-                                checked={unnecessaryFeatures.includes(feature.label)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    if (feature.label === "特になし") {
-                                      setUnnecessaryFeatures(["特になし"])
-                                    } else {
-                                      setUnnecessaryFeatures((prev) =>
-                                        prev.includes("特になし")
-                                          ? [...prev.filter((f) => f !== "特になし"), feature.label]
-                                          : [...prev, feature.label],
-                                      )
-                                    }
-                                  } else {
-                                    setUnnecessaryFeatures((prev) => prev.filter((f) => f !== feature.label))
-                                  }
-                                }}
-                              />
-                              <label htmlFor={feature.id} className="text-gray-700 cursor-pointer">
-                                {feature.label}
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-purple-800 font-medium">
-                          2. 追加して欲しいと思う機能（複数選択可、1つ以上必須）
-                        </label>
-                        <div className="space-y-2">
-                          {[
-                            { id: "desired1", label: "もっと気軽にできるサブクエスト（掃除機がけなど）機能" },
-                            { id: "desired2", label: "パズルなどのゲーム機能" },
-                            { id: "desired3", label: "レアアイテムやランキング機能" },
-                            { id: "desired4", label: "プロの整理収納アドバイザーにチャットで相談できる機能" },
-                            { id: "desired5", label: "クローゼット以外の整理収納支援機能" },
-                            { id: "desired6", label: "特になし" },
-                          ].map((feature) => (
-                            <div key={feature.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={feature.id}
-                                checked={desiredFeatures.includes(feature.label)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    if (feature.label === "特になし") {
-                                      setDesiredFeatures(["特になし"])
-                                    } else {
-                                      setDesiredFeatures((prev) =>
-                                        prev.includes("特になし")
-                                          ? [...prev.filter((f) => f !== "特になし"), feature.label]
-                                          : [...prev, feature.label],
-                                      )
-                                    }
-                                  } else {
-                                    setDesiredFeatures((prev) => prev.filter((f) => f !== feature.label))
-                                  }
-                                }}
-                              />
-                              <label htmlFor={feature.id} className="text-gray-700 cursor-pointer">
-                                {feature.label}
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label htmlFor="otherFeedback" className="block text-purple-800 font-medium">
-                          3. その他、良かった点や今後改善を期待する点を自由にお書きください
-                        </label>
-                        <textarea
-                          id="otherFeedback"
-                          value={otherFeedback}
-                          onChange={(e) => setOtherFeedback(e.target.value)}
-                          className="w-full h-24 p-2 border border-pink-300 rounded-md bg-white text-gray-800 focus:outline-none focus:border-purple-400"
-                          placeholder="任意入力"
-                        />
-                      </div>
-
-                      <div className="flex justify-between">
-                        <DialogClose asChild>
-                          <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors">
-                            キャンセル
-                          </button>
-                        </DialogClose>
-                        <DialogClose asChild>
-                          <button
-                            onClick={handleSubmitFeedback}
-                            disabled={unnecessaryFeatures.length === 0 || desiredFeatures.length === 0}
-                            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-md hover:from-purple-600 hover:to-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            送信する
-                          </button>
-                        </DialogClose>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 animate-in fade-in duration-500">
-                      {card.hasImage && (
-                        <div className="flex justify-center">
-                          <div className="relative w-48 h-48 rounded-full overflow-hidden border-4 border-yellow-500 shadow-[0_0_15px_rgba(250,204,21,0.5)]">
-                            <Image
-                              src={card.imageSrc || "/placeholder.svg?height=200&width=200"}
-                              alt={card.imageAlt || card.title}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                        </div>
-                      )}
-                      <p className="text-blue-100 text-center leading-relaxed">{card.content}</p>
-                    </div>
-                  )}
-                </DialogContent>
-              </Dialog>
+        <main className="mt-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {userChallenges.map((challenge) => (
+              <ChallengeCard key={challenge.id} challenge={challenge} onComplete={completeChallenge} />
             ))}
           </div>
-        </div>
-      </main>
+        </main>
+
+        {/* Reward animation */}
+        {showReward && (
+          <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-50">
+            <div className="bg-lime-700/90 text-white text-2xl font-bold px-8 py-6 rounded-lg shadow-lg animate-bounce border-2 border-lime-400/50">
+              <div className="text-lime-300 text-3xl mb-2">+{showReward.exp} EXP</div>
+              {showReward.item && (
+                <div className="text-cyan-300 flex items-center justify-center">
+                  <span>獲得アイテム: {showReward.item}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
