@@ -75,7 +75,6 @@ export default function SignupPage() {
       // 登録成功後、プロローグページにリダイレクト（新規ユーザーとして）
       router.push("/prologue")
     } catch (err: any) {
-      // エラーオブジェクトを詳細にログ出力
       console.error("登録エラー詳細:", JSON.stringify(err, null, 2))
       setError(typeof err === "string" ? err : err.message || "アカウント登録に失敗しました")
     } finally {
@@ -120,6 +119,9 @@ export default function SignupPage() {
                 required
               />
             </div>
+            <p className="text-xs text-teal-300 mt-1">
+              プレイネームは3～20文字で、英数字とアンダースコアのみ使用可能です
+            </p>
           </div>
 
           <div className="space-y-1 sm:space-y-2">
