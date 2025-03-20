@@ -120,6 +120,9 @@ export default function SignupPage() {
                 required
               />
             </div>
+            <p className="text-xs text-teal-300 mt-1">
+              ユーザー名は3～20文字で入力してください（英数字とアンダースコアのみ使用可能）
+            </p>
           </div>
 
           <div className="space-y-1 sm:space-y-2">
