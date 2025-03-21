@@ -91,6 +91,9 @@ export default function LoginPage() {
             ログイン
           </h1>
           <p className="text-sm sm:text-base text-white">冒険を続けるために、ログインしてください</p>
+          <p className="text-xs text-teal-300 mt-1">
+            ※ログイン後の画面では、音楽が再生されます（音楽：魔王魂）
+          </p>
         </div>
 
         {error && (
