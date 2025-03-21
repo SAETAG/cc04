@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Volume2, VolumeX, ArrowLeft, Home } from "lucide-react"
+import { saveStageRecord } from "@/lib/playfab"
 
 export default function Stage1BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
@@ -84,18 +85,28 @@ export default function Stage1BattlePage() {
   // Save record to database and navigate to clear page
   const saveRecord = async () => {
     setIsSaving(true)
-
     try {
-      // Simulate saving to database
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // 定数マッピングで内部IDに変換（例）
+      const problemInternalId = {
+        "リバウンドラゴン": "rebond_dragon",
+        "忘却ゴブリン": "forgotten_goblin",
+        "無限増殖スライム": "infinite_slime",
+      }[problems]
 
-      // In a real app, you would save the data to your database here
-      console.log("Saving record:", {
-        problemMonster: problems,
-        idealCloset: ideals,
+      const idealInternalId = {
+        "クリスタルクローゼット": "crystal_closet",
+        "スタイリストクローゼット": "stylist_closet",
+        "エターナルクローゼット": "eternal_closet",
+      }[ideals]
+
+      // PlayFab へデータ保存処理を呼び出す
+      await saveStageRecord({
+        stage1_complete: "true",
+        stage1_problem: problemInternalId!, // ここで undefined でないことを保証
+        stage1_ideal: idealInternalId!,
       })
 
-      // Navigate to clear page
+      // 保存に成功したらクリア画面へ遷移
       router.push("/closet/1/clear")
     } catch (error) {
       console.error("Error saving record:", error)
@@ -171,11 +182,7 @@ export default function Stage1BattlePage() {
                 } bg-gradient-to-b from-pink-900 to-pink-800 p-4 transition-all duration-300 h-52 md:h-56 flex flex-col items-center justify-between`}
               >
                 <div className="absolute top-0 left-0 w-full h-full bg-pink-500 opacity-10 rounded-lg"></div>
-                <div
-                  className={`text-center ${
-                    problems === "リバウンドラゴン" ? "scale-110" : ""
-                  } transition-transform duration-300`}
-                >
+                <div className={`text-center ${problems === "リバウンドラゴン" ? "scale-110" : ""} transition-transform duration-300`}>
                   <div className="flex justify-center mb-2">
                     <div className="w-16 h-16 bg-pink-800 rounded-full flex items-center justify-center">
                       <svg
@@ -231,11 +238,7 @@ export default function Stage1BattlePage() {
                 } bg-gradient-to-b from-cyan-800 to-sky-700 p-4 transition-all duration-300 h-52 md:h-56 flex flex-col items-center justify-between`}
               >
                 <div className="absolute top-0 left-0 w-full h-full bg-cyan-500 opacity-10 rounded-lg"></div>
-                <div
-                  className={`text-center ${
-                    problems === "忘却ゴブリン" ? "scale-110" : ""
-                  } transition-transform duration-300`}
-                >
+                <div className={`text-center ${problems === "忘却ゴブリン" ? "scale-110" : ""} transition-transform duration-300`}>
                   <div className="flex justify-center mb-2">
                     <div className="w-16 h-16 bg-cyan-700 rounded-full flex items-center justify-center">
                       <svg
@@ -288,11 +291,7 @@ export default function Stage1BattlePage() {
                 } bg-gradient-to-b from-orange-800 to-orange-900 p-4 transition-all duration-300 h-52 md:h-56 flex flex-col items-center justify-between`}
               >
                 <div className="absolute top-0 left-0 w-full h-full bg-orange-500 opacity-10 rounded-lg"></div>
-                <div
-                  className={`text-center ${
-                    problems === "無限増殖スライム" ? "scale-110" : ""
-                  } transition-transform duration-300`}
-                >
+                <div className={`text-center ${problems === "無限増殖スライム" ? "scale-110" : ""} transition-transform duration-300`}>
                   <div className="flex justify-center mb-2">
                     <div className="w-16 h-16 bg-orange-800 rounded-full flex items-center justify-center">
                       <svg
@@ -358,11 +357,7 @@ export default function Stage1BattlePage() {
                 } bg-gradient-to-b from-pink-900 to-pink-800 p-4 transition-all duration-300 h-52 md:h-56 flex flex-col items-center justify-between`}
               >
                 <div className="absolute top-0 left-0 w-full h-full bg-pink-500 opacity-10 rounded-lg"></div>
-                <div
-                  className={`text-center ${
-                    ideals === "クリスタルクローゼット" ? "scale-110" : ""
-                  } transition-transform duration-300`}
-                >
+                <div className={`text-center ${ideals === "クリスタルクローゼット" ? "scale-110" : ""} transition-transform duration-300`}>
                   <div className="flex justify-center mb-2">
                     <div className="w-16 h-16 bg-pink-800 rounded-full flex items-center justify-center">
                       <svg
@@ -419,11 +414,7 @@ export default function Stage1BattlePage() {
                 } bg-gradient-to-b from-cyan-800 to-sky-700 p-4 transition-all duration-300 h-52 md:h-56 flex flex-col items-center justify-between`}
               >
                 <div className="absolute top-0 left-0 w-full h-full bg-cyan-500 opacity-10 rounded-lg"></div>
-                <div
-                  className={`text-center ${
-                    ideals === "スタイリストクローゼット" ? "scale-110" : ""
-                  } transition-transform duration-300`}
-                >
+                <div className={`text-center ${ideals === "スタイリストクローゼット" ? "scale-110" : ""} transition-transform duration-300`}>
                   <div className="flex justify-center mb-2">
                     <div className="w-16 h-16 bg-cyan-700 rounded-full flex items-center justify-center">
                       <svg
@@ -478,11 +469,7 @@ export default function Stage1BattlePage() {
                 } bg-gradient-to-b from-orange-800 to-orange-900 p-4 transition-all duration-300 h-52 md:h-56 flex flex-col items-center justify-between`}
               >
                 <div className="absolute top-0 left-0 w-full h-full bg-orange-500 opacity-10 rounded-lg"></div>
-                <div
-                  className={`text-center ${
-                    ideals === "エターナルクローゼット" ? "scale-110" : ""
-                  } transition-transform duration-300`}
-                >
+                <div className={`text-center ${ideals === "エターナルクローゼット" ? "scale-110" : ""} transition-transform duration-300`}>
                   <div className="flex justify-center mb-2">
                     <div className="w-16 h-16 bg-orange-800 rounded-full flex items-center justify-center">
                       <svg
@@ -542,4 +529,3 @@ export default function Stage1BattlePage() {
     </div>
   )
 }
-

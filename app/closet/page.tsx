@@ -1,16 +1,25 @@
-"use client"
+"use client";
 
-import { useRef } from "react"
-import type React from "react"
-import { useState, useEffect } from "react"
-import Image from "next/image"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Volume2, VolumeX, ArrowLeft, Star, Lock, Home, Send, X } from "lucide-react"
+import { useRef, useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Volume2,
+  VolumeX,
+  ArrowLeft,
+  Star,
+  Lock,
+  Home,
+  Send,
+  X,
+} from "lucide-react";
+import PlayFab from "@/lib/playfab";
+import Cookies from "js-cookie";
 
-// Define the stages
+// 定義されたステージ（初期状態）
 const stages = [
   { id: 1, name: "闇の扉", icon: "🚪", unlocked: true },
   { id: 2, name: "選別の祭壇", icon: "🎁", unlocked: false },
@@ -26,32 +35,13 @@ const stages = [
   { id: 12, name: "確認の間", icon: "📸", unlocked: false },
   { id: 13, name: "帰還の里", icon: "🔧", unlocked: false },
   { id: 14, name: "最終決戦", icon: "🏰", unlocked: false },
-]
+];
 
-// Array of clothing emojis for background stamps
+// 背景用の絵文字
 const clothingEmojis = [
-  "👒",
-  "👑",
-  "👗",
-  "👖",
-  "✨",
-  "🧤",
-  "💃",
-  "🦺",
-  "🧦",
-  "👔",
-  "👚",
-  "👘",
-  "🧣",
-  "👜",
-  "🧢",
-  "👟",
-  "👠",
-  "🥾",
-  "🧥",
-]
-
-// Pre-generate positions for background emojis to avoid hydration errors
+  "👒", "👑", "👗", "👖", "✨", "🧤", "💃", "🦺", "🧦",
+  "👔", "👚", "👘", "🧣", "👜", "🧢", "👟", "👠", "🥾", "🧥",
+];
 const backgroundEmojis = Array(15)
   .fill(null)
   .map((_, i) => ({
@@ -65,177 +55,190 @@ const backgroundEmojis = Array(15)
       transform: `rotate(${i % 2 === 0 ? 10 : -10}deg)`,
       filter: "drop-shadow(0 0 5px rgba(255, 255, 255, 0.3))",
     },
-  }))
+  }));
 
 export default function ClosetPage() {
-  const [isMuted, setIsMuted] = useState(false)
-  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
-  const [showWelcome, setShowWelcome] = useState(true)
-  const [selectedStage, setSelectedStage] = useState<number | null>(null)
-  const [showChat, setShowChat] = useState(false)
-  const [userMessage, setUserMessage] = useState("")
+  const [isMuted, setIsMuted] = useState(false);
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [selectedStage, setSelectedStage] = useState<number | null>(null);
+  const [showChat, setShowChat] = useState(false);
+  const [userMessage, setUserMessage] = useState("");
   const [chatMessages, setChatMessages] = useState([
-    { sender: "mo-chan", text: "クローゼット王国での冒険はどうですか？何か質問があればどうぞ！" },
-  ])
-  const [isClient, setIsClient] = useState(false)
-  const chatInputRef = useRef<HTMLInputElement>(null)
-  const chatEndRef = useRef<HTMLDivElement | null>(null)
-  const router = useRouter()
+    {
+      sender: "mo-chan",
+      text: "クローゼット王国での冒険はどうですか？何か質問があればどうぞ！",
+    },
+  ]);
+  const [isClient, setIsClient] = useState(false);
+  const [stagesData, setStagesData] = useState(stages);
+  const hasFetchedRef = useRef(false);
+  const chatInputRef = useRef<HTMLInputElement>(null);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
 
-  // クライアントサイドでのみ実行されるようにする
+  // クライアントサイドのみ実行
   useEffect(() => {
-    setIsClient(true)
-  }, [])
+    setIsClient(true);
+  }, []);
 
-  // シンプルな音声初期化 - クライアントサイドでのみ実行
+  // Cookie からトークンを取得して、PlayFab.settings.sessionTicket にセット
   useEffect(() => {
-    if (!isClient) return
-
-    const audioElement = new Audio("/closet.mp3")
-    audioElement.loop = true
-    audioElement.volume = 0.7
-    setAudio(audioElement)
-
-    try {
-      audioElement.play().catch((error) => {
-        console.log("Auto-play was prevented:", error)
-      })
-    } catch (error) {
-      console.log("Audio play error:", error)
+    const tokenFromCookie = Cookies.get("token");
+    if (tokenFromCookie) {
+      console.log("Cookieから取得したtoken:", tokenFromCookie);
+      PlayFab.settings.sessionTicket = tokenFromCookie;
+    } else {
+      console.error("Cookieにトークンがありません");
     }
+  }, []);
 
+  // 音声の初期化
+  useEffect(() => {
+    if (!isClient) return;
+    const audioElement = new Audio("/closet.mp3");
+    audioElement.loop = true;
+    audioElement.volume = 0.7;
+    setAudio(audioElement);
+    audioElement.play().catch((error) =>
+      console.log("Auto-play was prevented:", error)
+    );
     return () => {
-      audioElement.pause()
-      audioElement.src = ""
-    }
-  }, [isClient])
+      audioElement.pause();
+      audioElement.src = "";
+    };
+  }, [isClient]);
 
-  // ミュート状態が変更されたときに適用
+  // ミュート状態の反映
   useEffect(() => {
-    if (!audio || !isClient) return
-
-    audio.muted = isMuted
-
-    // ミュート解除時に再生を試みる
+    if (!audio) return;
+    audio.muted = isMuted;
     if (!isMuted && audio.paused) {
-      try {
-        audio.play().catch((error) => {
-          console.log("Play on unmute failed:", error)
-        })
-      } catch (error) {
-        console.log("Play error:", error)
-      }
+      audio.play().catch((error) =>
+        console.log("Play on unmute failed:", error)
+      );
     }
-  }, [isMuted, audio, isClient])
+  }, [isMuted, audio]);
 
-  // Scroll to bottom of chat when messages change
+  // toggleMute 関数の定義
+  const toggleMute = () => {
+    setIsMuted((prev) => !prev);
+  };
+
+  // チャットの自動スクロール
   useEffect(() => {
     if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: "smooth" })
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [chatMessages])
+  }, [chatMessages]);
 
-  // Toggle mute
-  const toggleMute = () => {
-    setIsMuted(!isMuted)
-  }
-
-  // 画面タップで再生を試みる関数
-  const tryPlayAudio = () => {
-    if (!audio || !isClient) return
-
-    if (audio.paused && !isMuted) {
-      try {
-        audio.play().catch((error) => {
-          console.log("Play on screen tap failed:", error)
-        })
-      } catch (error) {
-        console.log("Play error:", error)
+  // PlayFabからユーザーデータを取得（1回のみ実行）
+  useEffect(() => {
+    if (!isClient || hasFetchedRef.current) return;
+    const token = PlayFab.settings.sessionTicket;
+    if (!token || token === "Must be logged in to call this method") {
+      console.error("ユーザーがログインしていない、または無効なトークンです");
+      hasFetchedRef.current = true;
+      return;
+    }
+    PlayFab.PlayFabClient.GetUserData(
+      { Keys: ["stage1_complete"] },
+      (result: any, error?: any) => {
+        if (error) {
+          console.error("ユーザーデータ取得エラー:", error);
+          hasFetchedRef.current = true;
+          return;
+        }
+        if (!result || !result.data) {
+          console.error("GetUserDataでデータが返されませんでした");
+          hasFetchedRef.current = true;
+          return;
+        }
+        const stage1Complete = result.data.Data?.stage1_complete?.Value;
+        console.log("stage1_complete:", stage1Complete);
+        if (stage1Complete === "true") {
+          setStagesData((prev) =>
+            prev.map((stage) =>
+              stage.id === 2 ? { ...stage, unlocked: true } : stage
+            )
+          );
+        }
+        hasFetchedRef.current = true;
       }
-    }
-  }
+    );
+  }, [isClient]);
 
-  // Close welcome message
+  // 画面タップで音声再生
+  const tryPlayAudio = () => {
+    if (!audio || !isClient) return;
+    if (audio.paused && !isMuted) {
+      audio.play().catch((error) =>
+        console.log("Play on screen tap failed:", error)
+      );
+    }
+  };
+
   const closeWelcome = () => {
-    setShowWelcome(false)
+    setShowWelcome(false);
+    tryPlayAudio();
+  };
 
-    // ウェルカムメッセージを閉じる時に音声再生を試みる（ユーザーインタラクション）
-    tryPlayAudio()
-  }
-
-  // Handle stage selection
   const handleStageSelect = (stageId: number) => {
-    const stage = stages.find((s) => s.id === stageId)
+    const stage = stagesData.find((s) => s.id === stageId);
     if (stage && stage.unlocked) {
-      setSelectedStage(stageId)
-      // Navigate to the stage page
-      router.push(`/closet/${stageId}`)
+      setSelectedStage(stageId);
+      router.push(`/closet/${stageId}`);
     }
-  }
+  };
 
-  // Toggle chat bubble
   const toggleChat = () => {
-    setShowChat(!showChat)
-    // Focus the input when opening chat
+    setShowChat((prev) => !prev);
     if (!showChat && chatInputRef.current) {
       setTimeout(() => {
-        chatInputRef.current?.focus()
-      }, 300)
+        chatInputRef.current?.focus();
+      }, 300);
     }
+    tryPlayAudio();
+  };
 
-    // チャットを開く/閉じる時に音声再生を試みる（ユーザーインタラクション）
-    tryPlayAudio()
-  }
-
-  // Close chat bubble
   const closeChat = () => {
-    setShowChat(false)
-  }
+    setShowChat(false);
+  };
 
-  // Handle chat form submission
   const handleChatSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (userMessage.trim()) {
-      // Add user message
-      setChatMessages([...chatMessages, { sender: "user", text: userMessage }])
-
-      // Simulate Mo-chan's response after a short delay
+      setChatMessages((prev) => [...prev, { sender: "user", text: userMessage }]);
       setTimeout(() => {
         setChatMessages((prev) => [
           ...prev,
           {
             sender: "mo-chan",
-            text: "なるほど！クローゼットの整理についてですね。ステージを進めていくと、様々な整理術が学べますよ！",
+            text: "なるほど！クローゼットの整理についてですね。ステージを進めると、整理術が学べますよ！",
           },
-        ])
-      }, 1000)
-
-      // Clear input
-      setUserMessage("")
+        ]);
+      }, 1000);
+      setUserMessage("");
     }
-  }
+  };
 
   const getStagePosition = (index: number, total: number) => {
-    // Create a more pronounced curved path
-    const progress = index / (total - 1)
-
-    // Calculate x position using a sine wave for a curved path
-    // Multiply by a larger number for more pronounced curves
-    const amplitude = 120 // Increased amplitude for wider curves
-    const xOffset = Math.sin(progress * Math.PI * 2) * amplitude
-
-    // Increase vertical spacing between stages significantly
+    const progress = index / (total - 1);
+    const amplitude = 120;
+    const xOffset = Math.sin(progress * Math.PI * 2) * amplitude;
     return {
       left: `calc(50% + ${xOffset}px)`,
-      top: `${100 + progress * 1800}px`, // Increased from 1200 to 1800 for even more vertical space
-    }
-  }
+      top: `${100 + progress * 1800}px`,
+    };
+  };
 
   return (
-    <div className="min-h-screen bg-teal-950 flex flex-col" onClick={isClient ? tryPlayAudio : undefined}>
+    <div
+      className="min-h-screen bg-teal-950 flex flex-col"
+      onClick={isClient ? tryPlayAudio : undefined}
+    >
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
-        {/* Decorative corners */}
         <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-yellow-500"></div>
         <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-yellow-500"></div>
         <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-yellow-500"></div>
@@ -260,10 +263,14 @@ export default function ClosetPage() {
           <Button
             variant="outline"
             size="icon"
-            className="bg-purple-800 border-yellow-600 text-white hover:bg-purple-700 h-8 w-8 sm:h-10 sm:w-10"
             onClick={toggleMute}
+            className="bg-purple-800 border-yellow-600 text-white hover:bg-purple-700 h-8 w-8 sm:h-10 sm:w-10"
           >
-            {isMuted ? <VolumeX className="h-4 w-4 sm:h-5 sm:w-5" /> : <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />}
+            {isMuted ? (
+              <VolumeX className="h-4 w-4 sm:h-5 sm:w-5" />
+            ) : (
+              <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />
+            )}
           </Button>
           <Link href="/home">
             <Button
@@ -277,26 +284,27 @@ export default function ClosetPage() {
         </div>
       </header>
 
-      {/* Main content */}
+      {/* Main Content */}
       <main className="flex-1 flex flex-col items-center p-4 relative">
-        {/* Welcome message from Mo-chan */}
         {showWelcome && (
           <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
             <div className="bg-gradient-to-br from-purple-900 to-teal-900 rounded-xl p-6 max-w-md border-2 border-yellow-500 shadow-lg relative">
               <div className="absolute -top-16 left-1/2 transform -translate-x-1/2">
                 <div className="relative w-24 h-24" style={{ animation: "rpg-float 3s ease-in-out infinite" }}>
                   {isClient && (
-                    <Image src="/cow-fairy.webp" alt="片付けの妖精モーちゃん" fill className="object-contain" />
+                    <Image
+                      src="/cow-fairy.webp"
+                      alt="片付けの妖精モーちゃん"
+                      fill
+                      className="object-contain"
+                    />
                   )}
                 </div>
               </div>
-
               <h2 className="text-xl font-bold text-yellow-300 mt-8 mb-4 text-center">モーちゃん</h2>
-
               <p className="text-white text-center mb-6">
                 クローゼット王国へようこそ！１ステージづつ片付けいこう！さぁ、一緒に冒険だ！
               </p>
-
               <div className="flex justify-center">
                 <Button
                   onClick={closeWelcome}
@@ -309,7 +317,6 @@ export default function ClosetPage() {
           </div>
         )}
 
-        {/* Background clothing stamps - with fixed positions */}
         {isClient && (
           <div className="absolute inset-0 overflow-hidden">
             {backgroundEmojis.map((item) => (
@@ -320,28 +327,26 @@ export default function ClosetPage() {
           </div>
         )}
 
-        {/* Stages path */}
+        {/* ステージパス */}
         <div className="w-full max-w-md mx-auto mt-4 pb-20 relative">
-          {/* Stages */}
           <div className="relative h-[2000px] w-full overflow-auto">
-            {stages.map((stage, index) => {
-              const position = getStagePosition(index, stages.length)
-
-              // Calculate connection line position to previous stage
-              let connectionStyle = {}
+            {stagesData.map((stage, index) => {
+              const position = getStagePosition(index, stagesData.length);
+              let connectionStyle = {};
               if (index > 0) {
-                const prevPosition = getStagePosition(index - 1, stages.length)
-                const startX = Number.parseFloat(prevPosition.left.replace("calc(50% + ", "").replace("px)", ""))
-                const startY = Number.parseFloat(prevPosition.top.replace("px", ""))
-                const endX = Number.parseFloat(position.left.replace("calc(50% + ", "").replace("px)", ""))
-                const endY = Number.parseFloat(position.top.replace("px", ""))
-
-                // Calculate angle and length
-                const dx = endX - startX
-                const dy = endY - startY
-                const length = Math.sqrt(dx * dx + dy * dy)
-                const angle = Math.atan2(dy, dx) * (180 / Math.PI)
-
+                const prevPosition = getStagePosition(index - 1, stagesData.length);
+                const startX = Number.parseFloat(
+                  prevPosition.left.replace("calc(50% + ", "").replace("px)", "")
+                );
+                const startY = Number.parseFloat(prevPosition.top.replace("px", ""));
+                const endX = Number.parseFloat(
+                  position.left.replace("calc(50% + ", "").replace("px)", "")
+                );
+                const endY = Number.parseFloat(position.top.replace("px", ""));
+                const dx = endX - startX;
+                const dy = endY - startY;
+                const length = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx) * (180 / Math.PI);
                 connectionStyle = {
                   width: `${length}px`,
                   height: "4px",
@@ -353,15 +358,11 @@ export default function ClosetPage() {
                   background: "linear-gradient(to right, #60a5fa, #3b82f6)",
                   borderRadius: "2px",
                   zIndex: 5,
-                }
+                };
               }
-
               return (
                 <div key={stage.id}>
-                  {/* Connection line to previous stage */}
                   {index > 0 && <div style={connectionStyle as React.CSSProperties} />}
-
-                  {/* Stage button */}
                   <div
                     className="absolute"
                     style={{
@@ -378,23 +379,16 @@ export default function ClosetPage() {
                         stage.unlocked ? "hover:scale-110 cursor-pointer" : "cursor-not-allowed opacity-70"
                       }`}
                     >
-                      {/* Glowing effect for unlocked stages */}
                       <div
                         className={`absolute inset-0 rounded-full ${
                           stage.unlocked ? "bg-blue-500 animate-pulse" : "bg-gray-600"
                         }`}
                       ></div>
-
-                      {/* Border */}
                       <div className="absolute inset-0 rounded-full border-2 border-yellow-500"></div>
-
-                      {/* Stage content */}
                       <div className="relative z-10 text-3xl">
                         {stage.unlocked ? stage.icon : <Lock className="h-8 w-8 text-gray-300" />}
                       </div>
                     </button>
-
-                    {/* Stage name */}
                     <div className="mt-2 rpg-nameplate bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 px-3 py-1">
                       <p className="text-white text-center text-sm sm:text-base">
                         {stage.name}
@@ -407,18 +401,16 @@ export default function ClosetPage() {
                     </div>
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
 
-        {/* Mo-chan character with chat bubble in bottom right */}
+        {/* チャット UI */}
         <div className="fixed bottom-4 right-4 z-20">
           <div className="relative">
-            {/* Chat bubble */}
             {showChat && (
-              <div className="absolute bottom-full right-0 mb-2 w-64 sm:w-72 bg-gradient-to-br from-purple-900 to-purple-800 rounded-lg p-3 shadow-lg border-2 border-yellow-500 chat-bubble">
-                {/* Close button */}
+              <div className="absolute bottom-full right-0 mb-2 w-64 sm:w-72 bg-gradient-to-br from-purple-900 to-purple-800 rounded-lg p-3 shadow-lg border-2 border-yellow-500">
                 <button
                   onClick={closeChat}
                   className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700 transition-colors duration-200 border border-yellow-400 shadow-md"
@@ -426,8 +418,7 @@ export default function ClosetPage() {
                 >
                   <X className="h-3 w-3" />
                 </button>
-
-                <div className="max-h-48 overflow-y-auto pr-1 mb-2 mt-3 chat-messages">
+                <div className="max-h-48 overflow-y-auto pr-1 mb-2 mt-3">
                   {chatMessages.map((msg, index) => (
                     <div key={index} className={`mb-2 ${msg.sender === "user" ? "text-right" : ""}`}>
                       <div
@@ -443,7 +434,6 @@ export default function ClosetPage() {
                   ))}
                   <div ref={chatEndRef} />
                 </div>
-
                 <form onSubmit={handleChatSubmit} className="flex gap-1">
                   <Input
                     ref={chatInputRef}
@@ -453,30 +443,41 @@ export default function ClosetPage() {
                     onChange={(e) => setUserMessage(e.target.value)}
                     className="flex-1 bg-purple-100 border-purple-300 text-purple-900 text-sm"
                   />
-                  <Button
-                    type="submit"
-                    size="icon"
-                    className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900"
-                  >
+                  <Button type="submit" size="icon" className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900">
                     <Send className="h-4 w-4" />
                   </Button>
                 </form>
               </div>
             )}
-
-            {/* Mo-chan */}
             <div
               className="relative w-16 h-16 sm:w-20 sm:h-20 cursor-pointer"
               style={{ animation: "rpg-float 3s ease-in-out infinite" }}
               onClick={toggleChat}
             >
               <div className="absolute -inset-1 rounded-full bg-purple-500 bg-opacity-30 animate-pulse"></div>
-              {isClient && <Image src="/cow-fairy.webp" alt="片付けの妖精モーちゃん" fill className="object-contain" />}
+              {isClient && (
+                <Image
+                  src="/cow-fairy.webp"
+                  alt="片付けの妖精モーちゃん"
+                  fill
+                  className="object-contain"
+                />
+              )}
             </div>
           </div>
         </div>
       </main>
     </div>
-  )
+  );
 }
 
+// ユーティリティ関数（ステージ位置計算）
+function getStagePosition(index: number, total: number) {
+  const progress = index / (total - 1);
+  const amplitude = 120;
+  const xOffset = Math.sin(progress * Math.PI * 2) * amplitude;
+  return {
+    left: `calc(50% + ${xOffset}px)`,
+    top: `${100 + progress * 1800}px`,
+  };
+}

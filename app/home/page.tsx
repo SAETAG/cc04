@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
@@ -9,8 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Volume2, VolumeX, User, LogOut, Send, Scroll, X } from "lucide-react"
 import { useMediaQuery } from "@/hooks/use-mobile"
+import { useRouter } from "next/navigation"
+import Cookies from "js-cookie"  // js-cookieのインポート
 
 export default function HomePage() {
+  const router = useRouter()
   const [isMuted, setIsMuted] = useState(false)
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [showChat, setShowChat] = useState(false)
@@ -25,6 +26,12 @@ export default function HomePage() {
   const chatEndRef = useRef<HTMLDivElement>(null)
   const chatBubbleRef = useRef<HTMLDivElement>(null)
   const isMobile = useMediaQuery("(max-width: 768px)")
+
+  // ログアウト機能：クッキーの "token" を削除し、/login へリダイレクト
+  const handleLogout = () => {
+    Cookies.remove("token")
+    router.push("/login")
+  }
 
   // シンプルな音声初期化
   useEffect(() => {
@@ -129,8 +136,6 @@ export default function HomePage() {
         chatInputRef.current?.focus()
       }, 300)
     }
-
-    // モーちゃんをクリックした時に音声再生を試みる（ユーザーインタラクション）
     tryPlayAudio()
   }
 
@@ -152,8 +157,6 @@ export default function HomePage() {
   // Start chat interaction
   const handleChatInteraction = () => {
     setIsInteractingWithChat(true)
-
-    // チャットとのインタラクション時に音声再生を試みる（ユーザーインタラクション）
     tryPlayAudio()
   }
 
@@ -161,10 +164,7 @@ export default function HomePage() {
   const handleChatSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (userMessage.trim()) {
-      // Add user message
       setChatMessages([...chatMessages, { sender: "user", text: userMessage }])
-
-      // Simulate Mo-chan's response after a short delay
       setTimeout(() => {
         setChatMessages((prev) => [
           ...prev,
@@ -174,8 +174,6 @@ export default function HomePage() {
           },
         ])
       }, 1000)
-
-      // Clear input
       setUserMessage("")
     }
   }
@@ -211,15 +209,15 @@ export default function HomePage() {
               <User className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </Link>
-          <Link href="/">
-            <Button
-              variant="outline"
-              size="icon"
-              className="bg-purple-800 border-yellow-600 text-white hover:bg-purple-700 h-8 w-8 sm:h-10 sm:w-10"
-            >
-              <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
-          </Link>
+          {/* ログアウトボタン：クリック時に handleLogout を実行 */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="bg-purple-800 border-yellow-600 text-white hover:bg-purple-700 h-8 w-8 sm:h-10 sm:w-10"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
+          </Button>
         </div>
       </header>
 
@@ -267,7 +265,7 @@ export default function HomePage() {
                 </div>
               </Link>
 
-              {/* Gold Storage - Top Left */}
+              {/* lake - Top Left */}
               <Link
                 href="/lake"
                 className="absolute top-[30%] left-[25%] transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform duration-200 z-10"
@@ -282,7 +280,7 @@ export default function HomePage() {
                 </div>
               </Link>
 
-              {/* Closet Kingdom - Bottom Left */}
+              {/* closet - Bottom Left */}
               <Link
                 href="/closet"
                 className="absolute top-[65%] left-[25%] transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform duration-200 z-10"
@@ -297,7 +295,7 @@ export default function HomePage() {
                 </div>
               </Link>
 
-              {/* mountain - Bottom Right - Moved more to the left */}
+              {/* mountain - Bottom Right */}
               <Link
                 href="/mountain"
                 className="absolute top-[65%] left-[65%] transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform duration-200 z-10"
@@ -323,7 +321,7 @@ export default function HomePage() {
                       onClick={handleChatInteraction}
                       onMouseEnter={handleChatInteraction}
                     >
-                      {/* Close button - only show when interacting */}
+                      {/* Close button */}
                       {isInteractingWithChat && (
                         <button
                           onClick={(e) => {
@@ -354,7 +352,6 @@ export default function HomePage() {
                         <div ref={chatEndRef} />
                       </div>
 
-                      {/* Only show form when interacting */}
                       {isInteractingWithChat && (
                         <form onSubmit={handleChatSubmit} className="flex gap-1">
                           <Input
@@ -400,7 +397,6 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* CSS for RPG elements */}
       <style jsx global>{`
         .rpg-nameplate {
           padding: 2px 8px;
@@ -410,12 +406,12 @@ export default function HomePage() {
           min-width: 80px;
           text-align: center;
         }
-        
+
         @keyframes rpg-float {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-10px); }
         }
-        
+
         .chat-bubble:after {
           content: '';
           position: absolute;
@@ -425,15 +421,15 @@ export default function HomePage() {
           border-style: solid;
           border-color: #6b21a8 transparent;
         }
-        
+
         .chat-messages::-webkit-scrollbar {
           width: 4px;
         }
-        
+
         .chat-messages::-webkit-scrollbar-track {
           background: rgba(139, 92, 246, 0.1);
         }
-        
+
         .chat-messages::-webkit-scrollbar-thumb {
           background-color: rgba(139, 92, 246, 0.5);
           border-radius: 20px;
@@ -442,4 +438,3 @@ export default function HomePage() {
     </div>
   )
 }
-
