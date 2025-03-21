@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState, type FormEvent, useEffect } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -11,13 +9,13 @@ import { Label } from "@/components/ui/label"
 import { KeyRound, Mail } from "lucide-react"
 import { login, checkIsFirstLogin } from "@/lib/auth"
 
-// 絵文字の背景コンポーネント
+// 絵文字の背景コンポーネント（装飾用）
 function FloatingEmojis() {
   const [emojis, setEmojis] = useState<React.ReactNode[]>([])
   const clothingEmojis = ["👒", "👑", "👗", "👙", "👖", "✨", "🧤", "💃", "🦺", "🧦"]
 
+  // 20個の絵文字をランダム配置
   useEffect(() => {
-    // クライアントサイドでのみ実行
     const emojiElements = Array.from({ length: 20 }, (_, i) => (
       <div
         key={i}
@@ -34,7 +32,6 @@ function FloatingEmojis() {
         {clothingEmojis[Math.floor(Math.random() * clothingEmojis.length)]}
       </div>
     ))
-
     setEmojis(emojiElements)
   }, [])
 
@@ -54,19 +51,17 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      // バリデーション
+      // バリデーション：メールアドレスとパスワードは必須
       if (!email || !password) {
         throw new Error("メールアドレスとパスワードを入力してください")
       }
 
-      // PlayFabでログイン
+      // PlayFab でログインAPIを呼び出す
       const result = await login({ email, password })
       console.log("ログイン成功:", result)
 
-      // 初回ログインかどうかを確認
+      // 初回ログインかどうかチェック（オンボーディング状態）
       const isFirstLogin = await checkIsFirstLogin(result)
-
-      // 初回ログインの場合は/prologueに、それ以外は/homeにリダイレクト
       if (isFirstLogin) {
         router.push("/prologue")
       } else {
@@ -82,7 +77,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-teal-950 p-4 relative overflow-hidden">
-      {/* 絵文字の背景コンポーネント */}
+      {/* 背景に配置する絵文字 */}
       <FloatingEmojis />
 
       <div className="max-w-md w-full bg-teal-900 p-6 sm:p-8 rounded-xl shadow-lg border-2 border-teal-700 z-10 animate-magical-appear">
@@ -90,14 +85,18 @@ export default function LoginPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-yellow-300 drop-shadow-[0_0_8px_rgba(250,204,21,0.7)]">
             ログイン
           </h1>
-          <p className="text-sm sm:text-base text-white">冒険を続けるために、ログインしてください</p>
+          <p className="text-sm sm:text-base text-white">
+            冒険を続けるために、ログインしてください
+          </p>
           <p className="text-xs text-teal-300 mt-1">
             ※ログイン後の画面では、音楽が再生されます（音楽：魔王魂）
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm">{error}</div>
+          <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm">
+            {error}
+          </div>
         )}
 
         <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
@@ -154,10 +153,6 @@ export default function LoginPage() {
           </Link>
         </div>
       </div>
-
-      <div className="absolute bottom-0 w-full h-16 bg-teal-950 opacity-90 z-0"></div>
-      <div className="absolute bottom-0 w-full h-8 bg-teal-950 opacity-95 z-0"></div>
     </div>
   )
 }
-

@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label"
 import { KeyRound, Mail, User } from "lucide-react"
 import { signUp } from "@/lib/auth"
 
-// 絵文字の背景コンポーネント
 function FloatingEmojis() {
   const [emojis, setEmojis] = useState<React.ReactNode[]>([])
   const clothingEmojis = ["👒", "👑", "👗", "👙", "👖", "✨", "🧤", "💃", "🦺", "🧦"]
@@ -51,12 +50,10 @@ export default function SignupPage() {
     setIsLoading(true)
 
     try {
-      // クライアント側バリデーション
       const trimmedName = name.trim()
       if (trimmedName.length < 3 || trimmedName.length > 20) {
         throw new Error("ユーザー名は3～20文字で入力してください")
       }
-      // ユーザー名は英数字とアンダースコアのみ許容する
       const usernameRegex = /^[A-Za-z0-9_]+$/
       if (!usernameRegex.test(trimmedName)) {
         throw new Error("ユーザー名は英数字とアンダースコアのみ使用可能です")
@@ -68,14 +65,10 @@ export default function SignupPage() {
         throw new Error("パスワードは6文字以上で入力してください")
       }
 
-      // PlayFabでユーザー登録
       const result = await signUp({ name: trimmedName, email, password })
       console.log("登録成功:", result)
-
-      // 登録成功後、プロローグページにリダイレクト（新規ユーザーとして）
       router.push("/prologue")
     } catch (err: any) {
-      // エラーオブジェクトを詳細にログ出力
       console.error("登録エラー詳細:", JSON.stringify(err, null, 2))
       setError(typeof err === "string" ? err : err.message || "アカウント登録に失敗しました")
     } finally {
@@ -85,7 +78,6 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-teal-950 p-4 relative overflow-hidden">
-      {/* 絵文字の背景コンポーネント */}
       <FloatingEmojis />
 
       <div className="max-w-md w-full bg-teal-900 p-6 sm:p-8 rounded-xl shadow-lg border-2 border-teal-700 z-10 animate-magical-appear">

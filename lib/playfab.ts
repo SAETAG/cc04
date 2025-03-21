@@ -1,4 +1,3 @@
-// lib/playfab.ts
 let PlayFab: any = null;
 
 if (typeof window !== "undefined") {
@@ -21,3 +20,27 @@ if (typeof window !== "undefined") {
 }
 
 export default PlayFab;
+
+// ステージ１のクリアデータを保存するための関数
+export const saveStageRecord = (data: {
+  stage1_complete: string;
+  stage1_problem: string;
+  stage1_ideal: string;
+}): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    PlayFab.PlayFabClient.UpdateUserData(
+      {
+        Data: data,
+        Permission: "Public", // 必要に応じて "Private" に変更
+      },
+      (result: any) => {
+        console.log("User data updated successfully:", result);
+        resolve(result);
+      },
+      (error: any) => {
+        console.error("Error updating user data:", error);
+        reject(error);
+      }
+    );
+  });
+};

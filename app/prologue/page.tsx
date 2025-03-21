@@ -162,7 +162,7 @@ const DynamicPrologue = () => {
   const continueToCharacterCreation = async () => {
     try {
       await markOnboardingComplete();
-      router.push("/charasetting");
+      router.push("/home");
     } catch (error) {
       console.error("Onboardingマーク更新エラー:", error);
     }
@@ -300,7 +300,7 @@ const DynamicPrologue = () => {
                 onClick={async () => {
                   try {
                     await markOnboardingComplete();
-                    router.push("/charasetting");
+                    router.push("/home");
                   } catch (error) {
                     console.error("Onboardingマーク更新エラー:", error);
                   }
