@@ -1,3 +1,5 @@
+import Cookies from "js-cookie";
+
 let PlayFab: any = null;
 
 if (typeof window !== "undefined") {

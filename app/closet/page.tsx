@@ -84,40 +84,200 @@ export default function ClosetPage() {
 
   // Cookie からトークンを取得して、PlayFab.settings.sessionTicket にセット
   useEffect(() => {
-    const tokenFromCookie = Cookies.get("token");
-    if (tokenFromCookie) {
-      console.log("Cookieから取得したtoken:", tokenFromCookie);
-      PlayFab.settings.sessionTicket = tokenFromCookie;
-    } else {
-      console.error("Cookieにトークンがありません");
+    const fetchUserData = async () => {
+      try {
+        const tokenFromCookie = Cookies.get("token");
+        if (!tokenFromCookie) {
+          console.error("Cookieにトークンがありません");
+          router.push("/login");
+          return;
+        }
+
+        console.log("Token from cookie:", tokenFromCookie);
+        // セッションチケットを設定
+        PlayFab.settings.sessionTicket = tokenFromCookie;
+
+        // ユーザーデータを取得
+        if (!hasFetchedRef.current) {
+          try {
+            const result: any = await new Promise((resolve, reject) => {
+              console.log("GetUserData呼び出し前のセッションチケット:", PlayFab.settings.sessionTicket);
+              
+              PlayFab.PlayFabClient.GetUserData(
+                {
+                  Keys: ["stage1_complete"],
+                  PlayFabId: null
+                },
+                function(error: any, result: any) {
+                  // APIレスポンスの詳細をログ出力
+                  console.log("PlayFab API Response Details:", JSON.stringify({
+                    hasResult: !!result,
+                    resultType: result ? typeof result : 'undefined',
+                    resultKeys: result ? Object.keys(result) : [],
+                    hasError: !!error,
+                    errorType: error ? typeof error : 'undefined',
+                    sessionTicket: PlayFab.settings.sessionTicket
+                  }, null, 2));
+
+                  // エラーチェック
+                  if (error) {
+                    try {
+                      const errorInfo = {
+                        error: JSON.stringify(error, null, 2),
+                        type: typeof error,
+                        keys: Object.keys(error),
+                        isError: error instanceof Error,
+                        hasMessage: 'message' in error,
+                        hasErrorMessage: 'errorMessage' in error,
+                        hasErrorCode: 'errorCode' in error,
+                        errorCode: error.errorCode,
+                        errorMessage: error.errorMessage,
+                        message: error.message,
+                        name: error.name,
+                        stack: error.stack
+                      };
+                      console.log("PlayFab Error Full Structure:", JSON.stringify(errorInfo, null, 2));
+
+                      // セッションエラーの検出
+                      const isSessionError = 
+                        error.errorCode === 1000 || // InvalidSessionTicket
+                        error.errorCode === 1001 || // SessionTicketExpired
+                        (error.errorMessage && error.errorMessage.includes("Must be logged in"));
+
+                      if (isSessionError) {
+                        console.error("セッションエラーを検出:", JSON.stringify(error, null, 2));
+                        Cookies.remove("token");
+                        router.push("/login");
+                        return;
+                      }
+
+                      reject(new Error(error.errorMessage || "不明なエラーが発生しました"));
+                      return;
+                    } catch (e) {
+                      console.error("エラー処理中に例外が発生:", e);
+                      reject(new Error("エラー処理中に予期せぬ問題が発生しました"));
+                      return;
+                    }
+                  }
+
+                  // 正常なレスポンスの処理
+                  if (!result || !result.data) {
+                    console.error("PlayFab: レスポンスが不正です");
+                    console.log("Received result:", JSON.stringify(result, null, 2));
+                    reject(new Error("PlayFabから不正なレスポンスを受信しました"));
+                    return;
+                  }
+
+                  // レスポンスの詳細をログ出力
+                  console.log("PlayFab Success Response:", JSON.stringify({
+                    hasData: !!result.data,
+                    dataType: typeof result.data,
+                    keys: Object.keys(result),
+                    data: result.data
+                  }, null, 2));
+
+                  resolve(result);
+                }
+              );
+            });
+
+            // 正常なレスポンスの処理
+            console.log("PlayFab Response:", result);
+            
+            if (result?.data?.Data) {
+              const stage1Complete = result.data.Data?.stage1_complete?.Value;
+              console.log("stage1_complete:", stage1Complete);
+              
+              if (stage1Complete === "true") {
+                setStagesData((prev) =>
+                  prev.map((stage) =>
+                    stage.id === 2 ? { ...stage, unlocked: true } : stage
+                  )
+                );
+              }
+            } else {
+              console.log("ステージデータが存在しません（初回アクセス時は正常）");
+            }
+            hasFetchedRef.current = true;
+          } catch (error: any) {
+            console.error("PlayFab処理エラー:", {
+              error,
+              message: error.message,
+              stack: error.stack,
+              type: typeof error
+            });
+          }
+        }
+      } catch (error: any) {
+        console.error("予期せぬエラーが発生しました:", {
+          error,
+          message: error.message,
+          stack: error.stack
+        });
+        
+        // エラーメッセージに基づいて処理
+        if (error.message === "Must be logged in to call this method") {
+          Cookies.remove("token");
+          router.push("/login");
+        }
+      }
+    };
+
+    if (isClient && !hasFetchedRef.current) {
+      fetchUserData();
     }
-  }, []);
+
+    // コンポーネントのアンマウント時にクリーンアップ
+    return () => {
+      hasFetchedRef.current = false;
+    };
+  }, [isClient, router]);
 
   // 音声の初期化
   useEffect(() => {
     if (!isClient) return;
-    const audioElement = new Audio("/closet.mp3");
+
+    let audioElement: HTMLAudioElement | null = new Audio("/closet.mp3");
     audioElement.loop = true;
     audioElement.volume = 0.7;
-    setAudio(audioElement);
-    audioElement.play().catch((error) =>
-      console.log("Auto-play was prevented:", error)
-    );
+    
+    const playAudio = async () => {
+      try {
+        if (audioElement) {
+          await audioElement.play();
+          setAudio(audioElement);
+        }
+      } catch (error) {
+        console.log("Auto-play was prevented:", error);
+      }
+    };
+
+    playAudio();
+
     return () => {
-      audioElement.pause();
-      audioElement.src = "";
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.src = "";
+        audioElement = null;
+      }
     };
   }, [isClient]);
 
   // ミュート状態の反映
   useEffect(() => {
-    if (!audio) return;
-    audio.muted = isMuted;
-    if (!isMuted && audio.paused) {
-      audio.play().catch((error) =>
-        console.log("Play on unmute failed:", error)
-      );
-    }
+    const handleAudioMute = async () => {
+      if (!audio) return;
+      audio.muted = isMuted;
+      if (!isMuted && audio.paused) {
+        try {
+          await audio.play();
+        } catch (error) {
+          console.log("Play on unmute failed:", error);
+        }
+      }
+    };
+
+    handleAudioMute();
   }, [isMuted, audio]);
 
   // toggleMute 関数の定義
@@ -131,42 +291,6 @@ export default function ClosetPage() {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [chatMessages]);
-
-  // PlayFabからユーザーデータを取得（1回のみ実行）
-  useEffect(() => {
-    if (!isClient || hasFetchedRef.current) return;
-    const token = PlayFab.settings.sessionTicket;
-    if (!token || token === "Must be logged in to call this method") {
-      console.error("ユーザーがログインしていない、または無効なトークンです");
-      hasFetchedRef.current = true;
-      return;
-    }
-    PlayFab.PlayFabClient.GetUserData(
-      { Keys: ["stage1_complete"] },
-      (result: any, error?: any) => {
-        if (error) {
-          console.error("ユーザーデータ取得エラー:", error);
-          hasFetchedRef.current = true;
-          return;
-        }
-        if (!result || !result.data) {
-          console.error("GetUserDataでデータが返されませんでした");
-          hasFetchedRef.current = true;
-          return;
-        }
-        const stage1Complete = result.data.Data?.stage1_complete?.Value;
-        console.log("stage1_complete:", stage1Complete);
-        if (stage1Complete === "true") {
-          setStagesData((prev) =>
-            prev.map((stage) =>
-              stage.id === 2 ? { ...stage, unlocked: true } : stage
-            )
-          );
-        }
-        hasFetchedRef.current = true;
-      }
-    );
-  }, [isClient]);
 
   // 画面タップで音声再生
   const tryPlayAudio = () => {
