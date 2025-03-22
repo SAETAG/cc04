@@ -127,6 +127,56 @@ export const login = async ({ email, password }: { email: string; password: stri
   }
 };
 
+// セッションを復元する関数
+export const restoreSession = async (): Promise<boolean> => {
+  if (!PlayFab) {
+    throw new Error(
+      "PlayFab SDK が利用できません。クライアントサイドで実行されていることを確認してください。"
+    );
+  }
+
+  try {
+    const token = Cookies.get("token");
+    const customId = Cookies.get("customId");
+
+    if (!token || !customId) {
+      console.log("セッション情報が見つかりません");
+      return false;
+    }
+
+    // セッションチケットを設定
+    PlayFab.settings.sessionTicket = token;
+
+    // セッションの有効性を確認
+    const isValid = await new Promise<boolean>((resolve) => {
+      PlayFab.PlayFabClient.GetUserData(
+        { Keys: ["hasCompletedOnboarding"] },
+        (error: PlayFabError | null, result: PlayFabResult) => {
+          if (error) {
+            console.error("セッション確認エラー:", error);
+            resolve(false);
+          } else {
+            console.log("セッション復元成功");
+            resolve(true);
+          }
+        }
+      );
+    });
+
+    if (!isValid) {
+      // セッションが無効な場合はCookieを削除
+      Cookies.remove("token", { path: "/" });
+      Cookies.remove("customId", { path: "/" });
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("セッション復元中にエラーが発生しました:", error);
+    return false;
+  }
+};
+
 // カスタムIDを取得または作成する関数
 const getOrCreateCustomId = async (playFabId: string): Promise<string> => {
   try {

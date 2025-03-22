@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import "./globals.css"
+import { restoreSession } from "@/lib/auth"
 
 export const metadata: Metadata = {
   title: "Closet Chronicle",
@@ -32,7 +33,23 @@ export default function RootLayout({
           }}
         />
 
-        {/* CDNからのPlayFab SDKの読み込みを削除 */}
+        {/* セッション復元スクリプト */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+            (async function() {
+              try {
+                const response = await fetch('/api/restore-session');
+                if (!response.ok) {
+                  console.log('セッション復元に失敗しました');
+                }
+              } catch (error) {
+                console.error('セッション復元中にエラーが発生しました:', error);
+              }
+            })();
+          `,
+          }}
+        />
       </head>
       <body suppressHydrationWarning>{children}</body>
     </html>
