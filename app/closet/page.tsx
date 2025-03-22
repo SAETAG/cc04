@@ -60,7 +60,6 @@ const backgroundEmojis = Array(15)
 export default function ClosetPage() {
   const [isMuted, setIsMuted] = useState(false);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
-  const [showWelcome, setShowWelcome] = useState(true);
   const [selectedStage, setSelectedStage] = useState<number | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [userMessage, setUserMessage] = useState("");
@@ -87,15 +86,49 @@ export default function ClosetPage() {
     const fetchUserData = async () => {
       try {
         const tokenFromCookie = Cookies.get("token");
-        if (!tokenFromCookie) {
-          console.error("Cookieにトークンがありません");
+        const customIdFromCookie = Cookies.get("customId");
+        
+        if (!tokenFromCookie || !customIdFromCookie) {
+          console.error("必要なCookieが見つかりません");
           router.push("/login");
           return;
         }
 
         console.log("Token from cookie:", tokenFromCookie);
+        console.log("CustomId from cookie:", customIdFromCookie);
+        
         // セッションチケットを設定
         PlayFab.settings.sessionTicket = tokenFromCookie;
+
+        // セッションの再認証を試みる
+        try {
+          await new Promise((resolve, reject) => {
+            PlayFab.PlayFabClient.LoginWithCustomID({
+              CustomId: customIdFromCookie,
+              CreateAccount: false
+            }, (error: any, result: any) => {
+              if (error) {
+                console.error("セッション再認証エラー:", error);
+                reject(error);
+                return;
+              }
+              
+              // 新しいセッションチケットを保存
+              const newSessionTicket = result.data.SessionTicket;
+              PlayFab.settings.sessionTicket = newSessionTicket;
+              Cookies.set("token", newSessionTicket, { expires: 7 });
+              resolve(result);
+            });
+          });
+          
+          console.log("セッション再認証成功");
+        } catch (error: any) {
+          console.error("セッション再認証失敗:", error);
+          Cookies.remove("token");
+          Cookies.remove("customId");
+          router.push("/login");
+          return;
+        }
 
         // ユーザーデータを取得
         if (!hasFetchedRef.current) {
@@ -355,35 +388,25 @@ export default function ClosetPage() {
 
   // 画面タップで音声再生
   const tryPlayAudio = () => {
-    if (!audio || !isClient) return;
-    if (audio.paused && !isMuted) {
-      audio.play().catch((error) =>
-        console.log("Play on screen tap failed:", error)
-      );
+    if (audio) {
+      audio.play().catch((error) => {
+        console.error("Audio playback failed:", error);
+      });
     }
-  };
-
-  const closeWelcome = () => {
-    setShowWelcome(false);
-    tryPlayAudio();
   };
 
   const handleStageSelect = (stageId: number) => {
-    const stage = stagesData.find((s) => s.id === stageId);
-    if (stage && stage.unlocked) {
-      setSelectedStage(stageId);
-      router.push(`/closet/${stageId}`);
-    }
+    setSelectedStage(stageId);
+    router.push(`/closet/${stageId}/battle`);
   };
 
   const toggleChat = () => {
-    setShowChat((prev) => !prev);
+    setShowChat(!showChat);
     if (!showChat && chatInputRef.current) {
       setTimeout(() => {
         chatInputRef.current?.focus();
-      }, 300);
+      }, 100);
     }
-    tryPlayAudio();
   };
 
   const closeChat = () => {
@@ -392,19 +415,24 @@ export default function ClosetPage() {
 
   const handleChatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (userMessage.trim()) {
-      setChatMessages((prev) => [...prev, { sender: "user", text: userMessage }]);
-      setTimeout(() => {
-        setChatMessages((prev) => [
-          ...prev,
-          {
-            sender: "mo-chan",
-            text: "なるほど！クローゼットの整理についてですね。ステージを進めると、整理術が学べますよ！",
-          },
-        ]);
-      }, 1000);
-      setUserMessage("");
-    }
+    if (!userMessage.trim()) return;
+
+    setChatMessages((prev) => [
+      ...prev,
+      { sender: "user", text: userMessage },
+    ]);
+    setUserMessage("");
+
+    setTimeout(() => {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          sender: "mo-chan",
+          text: "申し訳ありません。現在メンテナンス中です。",
+        },
+      ]);
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 1000);
   };
 
   const getStagePosition = (index: number, total: number) => {
@@ -418,240 +446,129 @@ export default function ClosetPage() {
   };
 
   return (
-    <div
-      className="min-h-screen bg-teal-950 flex flex-col"
-      onClick={isClient ? tryPlayAudio : undefined}
-    >
-      {/* Header */}
-      <header className="bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 p-3 flex justify-between items-center border-b-2 border-yellow-500 shadow-md relative">
-        <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-yellow-500"></div>
-        <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-yellow-500"></div>
-        <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-yellow-500"></div>
-        <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-yellow-500"></div>
-
-        <div className="flex items-center gap-2">
-          <Link href="/home">
-            <Button
-              variant="outline"
-              size="icon"
-              className="bg-purple-800 border-yellow-600 text-white hover:bg-purple-700 h-8 w-8 sm:h-10 sm:w-10"
-            >
-              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
-          </Link>
-          <h1 className="text-lg sm:text-2xl font-bold text-yellow-300 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)] px-2">
-            クローゼット王国
-          </h1>
+    <div className="relative min-h-screen bg-gradient-to-b from-purple-600 to-blue-600 overflow-hidden">
+      {/* 背景の絵文字アニメーション */}
+      {backgroundEmojis.map((item) => (
+        <div
+          key={item.id}
+          className="absolute animate-float"
+          style={item.style}
+        >
+          {item.emoji}
         </div>
+      ))}
 
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={toggleMute}
-            className="bg-purple-800 border-yellow-600 text-white hover:bg-purple-700 h-8 w-8 sm:h-10 sm:w-10"
-          >
-            {isMuted ? (
-              <VolumeX className="h-4 w-4 sm:h-5 sm:w-5" />
-            ) : (
-              <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />
-            )}
+      {/* ヘッダー */}
+      <div className="relative z-10 p-4 flex justify-between items-center">
+        <Link href="/">
+          <Button variant="outline" size="icon">
+            <Home className="h-4 w-4" />
           </Button>
-          <Link href="/home">
-            <Button
-              variant="outline"
-              size="icon"
-              className="bg-purple-800 border-yellow-600 text-white hover:bg-purple-700 h-8 w-8 sm:h-10 sm:w-10"
-            >
-              <Home className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
-          </Link>
-        </div>
-      </header>
+        </Link>
+        <Button variant="outline" size="icon" onClick={toggleMute}>
+          {isMuted ? (
+            <VolumeX className="h-4 w-4" />
+          ) : (
+            <Volume2 className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center p-4 relative">
-        {showWelcome && (
-          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-br from-purple-900 to-teal-900 rounded-xl p-6 max-w-md border-2 border-yellow-500 shadow-lg relative">
-              <div className="absolute -top-16 left-1/2 transform -translate-x-1/2">
-                <div className="relative w-24 h-24" style={{ animation: "rpg-float 3s ease-in-out infinite" }}>
-                  {isClient && (
-                    <Image
-                      src="/cow-fairy.webp"
-                      alt="片付けの妖精モーちゃん"
-                      fill
-                      className="object-contain"
-                    />
-                  )}
-                </div>
-              </div>
-              <h2 className="text-xl font-bold text-yellow-300 mt-8 mb-4 text-center">モーちゃん</h2>
-              <p className="text-white text-center mb-6">
-                クローゼット王国へようこそ！１ステージづつ片付けいこう！さぁ、一緒に冒険だ！
-              </p>
-              <div className="flex justify-center">
-                <Button
-                  onClick={closeWelcome}
-                  className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold"
-                >
-                  クローゼット王国へ
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {isClient && (
-          <div className="absolute inset-0 overflow-hidden">
-            {backgroundEmojis.map((item) => (
-              <div key={item.id} className="absolute" style={item.style as React.CSSProperties}>
-                {item.emoji}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ステージパス */}
-        <div className="w-full max-w-md mx-auto mt-4 pb-20 relative">
-          <div className="relative h-[2000px] w-full overflow-auto">
-            {stagesData.map((stage, index) => {
-              const position = getStagePosition(index, stagesData.length);
-              let connectionStyle = {};
-              if (index > 0) {
-                const prevPosition = getStagePosition(index - 1, stagesData.length);
-                const startX = Number.parseFloat(
-                  prevPosition.left.replace("calc(50% + ", "").replace("px)", "")
-                );
-                const startY = Number.parseFloat(prevPosition.top.replace("px", ""));
-                const endX = Number.parseFloat(
-                  position.left.replace("calc(50% + ", "").replace("px)", "")
-                );
-                const endY = Number.parseFloat(position.top.replace("px", ""));
-                const dx = endX - startX;
-                const dy = endY - startY;
-                const length = Math.sqrt(dx * dx + dy * dy);
-                const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-                connectionStyle = {
-                  width: `${length}px`,
-                  height: "4px",
-                  transform: `rotate(${angle}deg)`,
-                  transformOrigin: "0 50%",
-                  left: `calc(50% + ${startX}px)`,
-                  top: `${startY}px`,
-                  position: "absolute",
-                  background: "linear-gradient(to right, #60a5fa, #3b82f6)",
-                  borderRadius: "2px",
-                  zIndex: 5,
-                };
-              }
-              return (
-                <div key={stage.id}>
-                  {index > 0 && <div style={connectionStyle as React.CSSProperties} />}
-                  <div
-                    className="absolute"
-                    style={{
-                      left: position.left,
-                      top: position.top,
-                      transform: "translate(-50%, -50%)",
-                      zIndex: 10,
-                    }}
-                  >
-                    <button
-                      onClick={() => handleStageSelect(stage.id)}
-                      disabled={!stage.unlocked}
-                      className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-transform duration-200 ${
-                        stage.unlocked ? "hover:scale-110 cursor-pointer" : "cursor-not-allowed opacity-70"
-                      }`}
-                    >
-                      <div
-                        className={`absolute inset-0 rounded-full ${
-                          stage.unlocked ? "bg-blue-500 animate-pulse" : "bg-gray-600"
-                        }`}
-                      ></div>
-                      <div className="absolute inset-0 rounded-full border-2 border-yellow-500"></div>
-                      <div className="relative z-10 text-3xl">
-                        {stage.unlocked ? stage.icon : <Lock className="h-8 w-8 text-gray-300" />}
-                      </div>
-                    </button>
-                    <div className="mt-2 rpg-nameplate bg-gradient-to-r from-purple-900 via-teal-900 to-purple-900 px-3 py-1">
-                      <p className="text-white text-center text-sm sm:text-base">
-                        {stage.name}
-                        {stage.id === 1 && (
-                          <span className="ml-1 text-yellow-300">
-                            <Star className="h-4 w-4 inline" />
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* チャット UI */}
-        <div className="fixed bottom-4 right-4 z-20">
-          <div className="relative">
-            {showChat && (
-              <div className="absolute bottom-full right-0 mb-2 w-64 sm:w-72 bg-gradient-to-br from-purple-900 to-purple-800 rounded-lg p-3 shadow-lg border-2 border-yellow-500">
-                <button
-                  onClick={closeChat}
-                  className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700 transition-colors duration-200 border border-yellow-400 shadow-md"
-                  aria-label="チャットを閉じる"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-                <div className="max-h-48 overflow-y-auto pr-1 mb-2 mt-3">
-                  {chatMessages.map((msg, index) => (
-                    <div key={index} className={`mb-2 ${msg.sender === "user" ? "text-right" : ""}`}>
-                      <div
-                        className={`inline-block p-2 rounded-lg ${
-                          msg.sender === "user"
-                            ? "bg-gradient-to-r from-teal-600 to-blue-600 text-white shadow-md"
-                            : "bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-md"
-                        }`}
-                      >
-                        {msg.text}
-                      </div>
-                    </div>
-                  ))}
-                  <div ref={chatEndRef} />
-                </div>
-                <form onSubmit={handleChatSubmit} className="flex gap-1">
-                  <Input
-                    ref={chatInputRef}
-                    type="text"
-                    placeholder="メッセージを入力..."
-                    value={userMessage}
-                    onChange={(e) => setUserMessage(e.target.value)}
-                    className="flex-1 bg-purple-100 border-purple-300 text-purple-900 text-sm"
-                  />
-                  <Button type="submit" size="icon" className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900">
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </form>
-              </div>
-            )}
+      {/* メインコンテンツ */}
+      <div className="relative z-10 container mx-auto px-4 py-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {stagesData.map((stage, index) => (
             <div
-              className="relative w-16 h-16 sm:w-20 sm:h-20 cursor-pointer"
-              style={{ animation: "rpg-float 3s ease-in-out infinite" }}
-              onClick={toggleChat}
+              key={stage.id}
+              className={`relative p-4 rounded-lg border-2 ${
+                stage.unlocked
+                  ? "border-yellow-400 bg-purple-800 bg-opacity-80 cursor-pointer hover:bg-purple-700"
+                  : "border-gray-600 bg-gray-800 bg-opacity-80 cursor-not-allowed"
+              }`}
+              onClick={() => stage.unlocked && handleStageSelect(stage.id)}
             >
-              <div className="absolute -inset-1 rounded-full bg-purple-500 bg-opacity-30 animate-pulse"></div>
-              {isClient && (
-                <Image
-                  src="/cow-fairy.webp"
-                  alt="片付けの妖精モーちゃん"
-                  fill
-                  className="object-contain"
-                />
+              <div className="text-center">
+                <div className="text-4xl mb-2">{stage.icon}</div>
+                <h3 className="text-lg font-bold text-white mb-1">
+                  ステージ {stage.id}
+                </h3>
+                <p className="text-sm text-gray-300">{stage.name}</p>
+              </div>
+              {!stage.unlocked && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+                  <Lock className="w-8 h-8 text-gray-400" />
+                </div>
               )}
             </div>
-          </div>
+          ))}
         </div>
-      </main>
+      </div>
+
+      {/* チャットボタン */}
+      <div className="fixed bottom-4 right-4 z-20">
+        <Button
+          onClick={toggleChat}
+          className="rounded-full w-12 h-12 bg-yellow-500 hover:bg-yellow-600 text-purple-900"
+        >
+          <Send className="w-6 h-6" />
+        </Button>
+      </div>
+
+      {/* チャットウィンドウ */}
+      {showChat && (
+        <div className="fixed bottom-20 right-4 w-80 bg-purple-900 rounded-lg shadow-xl z-20 border-2 border-yellow-500">
+          <div className="flex justify-between items-center p-3 border-b border-yellow-500">
+            <h3 className="text-yellow-300 font-bold">モーちゃんに相談する</h3>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={closeChat}
+              className="text-yellow-300 hover:text-yellow-400"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="h-64 overflow-y-auto p-3">
+            {chatMessages.map((msg, index) => (
+              <div
+                key={index}
+                className={`mb-2 ${
+                  msg.sender === "user" ? "text-right" : "text-left"
+                }`}
+              >
+                <div
+                  className={`inline-block p-2 rounded-lg ${
+                    msg.sender === "user"
+                      ? "bg-yellow-500 text-purple-900"
+                      : "bg-purple-700 text-white"
+                  }`}
+                >
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+          <form onSubmit={handleChatSubmit} className="p-3 border-t border-yellow-500">
+            <div className="flex gap-2">
+              <Input
+                ref={chatInputRef}
+                type="text"
+                placeholder="メッセージを入力..."
+                value={userMessage}
+                onChange={(e) => setUserMessage(e.target.value)}
+                className="flex-1 bg-purple-800 border-yellow-500 text-white placeholder-purple-300"
+              />
+              <Button
+                type="submit"
+                className="bg-yellow-500 hover:bg-yellow-600 text-purple-900"
+              >
+                送信
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
