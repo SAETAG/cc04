@@ -146,7 +146,7 @@ export const restoreSession = async (): Promise<boolean> => {
 
     // まずカスタムIDでログインを試みる
     try {
-      await new Promise<void>((resolve, reject) => {
+      const loginResult = await new Promise<PlayFabResult>((resolve, reject) => {
         PlayFab.PlayFabClient.LoginWithCustomID(
           {
             CustomId: customId,
@@ -158,14 +158,21 @@ export const restoreSession = async (): Promise<boolean> => {
               reject(error);
             } else {
               console.log("CustomIDログイン成功");
-              resolve();
+              resolve(result);
             }
           }
         );
       });
 
-      // セッションチケットを設定
-      PlayFab.settings.sessionTicket = token;
+      if (!loginResult?.data?.SessionTicket) {
+        throw new Error("セッションチケットが取得できません");
+      }
+
+      // 新しいセッションチケットを設定
+      PlayFab.settings.sessionTicket = loginResult.data.SessionTicket;
+      
+      // 新しいセッションチケットをCookieに保存
+      Cookies.set("token", loginResult.data.SessionTicket, { expires: 7, path: "/" });
 
       // セッションの有効性を確認
       const isValid = await new Promise<boolean>((resolve) => {

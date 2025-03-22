@@ -67,6 +67,7 @@ export default function RootLayout({
                   throw new Error('PlayFab SDKが利用できません');
                 }
 
+                // セッション復元を試みる
                 const response = await fetch('/api/restore-session');
                 const data = await response.json();
                 
@@ -74,7 +75,10 @@ export default function RootLayout({
                   console.log('セッション復元に失敗しました:', data.error);
                   // セッションが無効な場合はログインページにリダイレクト
                   if (response.status === 401) {
-                    window.location.href = '/login';
+                    // 現在のURLを保存
+                    const currentPath = window.location.pathname;
+                    // ログインページにリダイレクト（元のページに戻れるように）
+                    window.location.href = '/login?redirect=' + encodeURIComponent(currentPath);
                   }
                 } else {
                   console.log('セッション復元成功');
@@ -82,7 +86,8 @@ export default function RootLayout({
               } catch (error) {
                 console.error('セッション復元中にエラーが発生しました:', error);
                 // エラーが発生した場合はログインページにリダイレクト
-                window.location.href = '/login';
+                const currentPath = window.location.pathname;
+                window.location.href = '/login?redirect=' + encodeURIComponent(currentPath);
               }
             })();
           `,
