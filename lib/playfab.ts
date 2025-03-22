@@ -41,13 +41,29 @@ if (typeof window !== "undefined") {
 
     // 初期化設定：環境変数からタイトルIDを設定
     if (PlayFab && PlayFab.settings) {
-      PlayFab.settings.titleId = process.env.NEXT_PUBLIC_PLAYFAB_TITLE_ID || "";
-      console.log("PlayFab initialized with title ID:", process.env.NEXT_PUBLIC_PLAYFAB_TITLE_ID);
+      const titleId = process.env.NEXT_PUBLIC_PLAYFAB_TITLE_ID;
+      if (!titleId) {
+        console.error("PlayFab title ID is not set in environment variables");
+        PlayFab = null;
+      } else {
+        PlayFab.settings.titleId = titleId;
+        // デバッグ情報を追加
+        PlayFab.settings.debugLog = true;
+        console.log("PlayFab initialized with title ID:", titleId);
+        console.log("PlayFab settings:", {
+          titleId: PlayFab.settings.titleId,
+          sessionTicket: PlayFab.settings.sessionTicket,
+          debugLog: PlayFab.settings.debugLog,
+          sdkVersion: PlayFab.settings.sdkVersion
+        });
+      }
     } else {
       console.error("PlayFab SDK not properly loaded");
+      PlayFab = null;
     }
   } catch (error) {
     console.error("Failed to load PlayFab SDK:", error);
+    PlayFab = null;
   }
 }
 
@@ -201,6 +217,115 @@ export const getStageComplete = async (stageNumber: number): Promise<boolean> =>
   });
 };
 
+// 経験値を初期化する関数
+const initializeExperience = async (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const sessionTicket = Cookies.get("token");
+    if (!sessionTicket) {
+      reject(new Error("セッションチケットが見つかりません"));
+      return;
+    }
+
+    PlayFab.settings.sessionTicket = sessionTicket;
+    console.log("統計データの初期化開始 - セッションチケット:", sessionTicket);
+    console.log("PlayFab設定:", {
+      titleId: PlayFab.settings.titleId,
+      sessionTicket: PlayFab.settings.sessionTicket,
+      debugLog: PlayFab.settings.debugLog
+    });
+
+    // まず統計データが存在するか確認
+    PlayFab.PlayFabClient.GetPlayerStatistics(
+      {
+        StatisticNames: ["Experience", "DailyExperience", "WeeklyExperience"]
+      },
+      (result: PlayFabResult) => {
+        console.log("統計データの確認結果:", result);
+        console.log("統計データの確認詳細:", {
+          hasResult: !!result,
+          resultType: result ? typeof result : 'undefined',
+          resultKeys: result ? Object.keys(result) : [],
+          hasData: !!result?.data,
+          dataType: result?.data ? typeof result?.data : 'undefined',
+          dataKeys: result?.data ? Object.keys(result?.data) : [],
+          hasStatistics: !!result?.data?.Statistics,
+          statisticsLength: result?.data?.Statistics?.length || 0
+        });
+        
+        // 統計データが既に存在する場合は初期化をスキップ
+        if (result?.data?.Statistics && result.data.Statistics.length > 0) {
+          console.log("統計データは既に存在します");
+          resolve();
+          return;
+        }
+
+        // 統計データが存在しない場合は初期化を実行
+        const statistics = [
+          {
+            StatisticName: "Experience",
+            Value: 0
+          },
+          {
+            StatisticName: "DailyExperience",
+            Value: 0
+          },
+          {
+            StatisticName: "WeeklyExperience",
+            Value: 0
+          }
+        ];
+
+        console.log("統計データの初期化リクエスト:", {
+          Statistics: statistics
+        });
+
+        PlayFab.PlayFabClient.UpdatePlayerStatistics(
+          {
+            Statistics: statistics
+          },
+          (updateResult: PlayFabResult) => {
+            console.log("統計データの初期化結果:", updateResult);
+            console.log("統計データの初期化詳細:", {
+              hasResult: !!updateResult,
+              resultType: updateResult ? typeof updateResult : 'undefined',
+              resultKeys: updateResult ? Object.keys(updateResult) : [],
+              hasData: !!updateResult?.data,
+              dataType: updateResult?.data ? typeof updateResult?.data : 'undefined',
+              dataKeys: updateResult?.data ? Object.keys(updateResult?.data) : []
+            });
+
+            if (!updateResult) {
+              reject(new Error("統計データの初期化に失敗: 結果がnullです"));
+              return;
+            }
+            resolve();
+          },
+          (error: PlayFabError) => {
+            console.error("統計データの初期化エラー:", error);
+            console.error("エラー詳細:", {
+              errorMessage: error.errorMessage,
+              errorCode: error.errorCode,
+              errorDetails: error.errorDetails,
+              sessionTicket: PlayFab.settings.sessionTicket
+            });
+            reject(new Error(`統計データの初期化に失敗: ${error.errorMessage}`));
+          }
+        );
+      },
+      (error: PlayFabError) => {
+        console.error("統計データの確認エラー:", error);
+        console.error("エラー詳細:", {
+          errorMessage: error.errorMessage,
+          errorCode: error.errorCode,
+          errorDetails: error.errorDetails,
+          sessionTicket: PlayFab.settings.sessionTicket
+        });
+        reject(new Error(`統計データの確認に失敗: ${error.errorMessage}`));
+      }
+    );
+  });
+};
+
 // 経験値を取得する関数
 export const getExperience = async (): Promise<{
   total: number;
@@ -216,6 +341,7 @@ export const getExperience = async (): Promise<{
       }
 
       PlayFab.settings.sessionTicket = sessionTicket;
+      console.log("経験値取得開始 - セッションチケット:", sessionTicket);
 
       // 全ての統計データを取得
       PlayFab.PlayFabClient.GetPlayerStatistics(
@@ -224,29 +350,46 @@ export const getExperience = async (): Promise<{
         },
         (result: PlayFabResult) => {
           console.log("GetPlayerStatistics レスポンス:", result);
+          console.log("GetPlayerStatistics 詳細:", {
+            hasResult: !!result,
+            resultType: result ? typeof result : 'undefined',
+            resultKeys: result ? Object.keys(result) : [],
+            hasData: !!result?.data,
+            dataType: result?.data ? typeof result?.data : 'undefined',
+            dataKeys: result?.data ? Object.keys(result?.data) : [],
+            hasStatistics: !!result?.data?.Statistics,
+            statisticsLength: result?.data?.Statistics?.length || 0,
+            sessionTicket: PlayFab.settings.sessionTicket
+          });
           
           // 結果がnullまたはundefinedの場合
           if (!result) {
             console.warn("GetPlayerStatisticsの結果がnullです");
             // 統計データが存在しない場合は初期化
             initializeExperience()
-              .then(() => resolve({ total: 0, daily: 0, weekly: 0 }))
+              .then(() => {
+                console.log("統計データの初期化成功");
+                resolve({ total: 0, daily: 0, weekly: 0 });
+              })
               .catch(error => {
                 console.error("統計データの初期化に失敗:", error);
-                resolve({ total: 0, daily: 0, weekly: 0 });
+                reject(new Error(`統計データの初期化に失敗: ${error.message}`));
               });
             return;
           }
 
           // 統計データが存在しない場合
-          if (!result.data?.Statistics) {
+          if (!result.data?.Statistics || result.data.Statistics.length === 0) {
             console.warn("統計データが存在しません");
             // 統計データが存在しない場合は初期化
             initializeExperience()
-              .then(() => resolve({ total: 0, daily: 0, weekly: 0 }))
+              .then(() => {
+                console.log("統計データの初期化成功");
+                resolve({ total: 0, daily: 0, weekly: 0 });
+              })
               .catch(error => {
                 console.error("統計データの初期化に失敗:", error);
-                resolve({ total: 0, daily: 0, weekly: 0 });
+                reject(new Error(`統計データの初期化に失敗: ${error.message}`));
               });
             return;
           }
@@ -263,55 +406,16 @@ export const getExperience = async (): Promise<{
         },
         (error: PlayFabError) => {
           console.error("経験値の取得に失敗:", error);
-          // エラーが発生した場合も0を返す
-          resolve({
-            total: 0,
-            daily: 0,
-            weekly: 0
+          console.error("エラー詳細:", {
+            errorMessage: error.errorMessage,
+            errorCode: error.errorCode,
+            errorDetails: error.errorDetails,
+            sessionTicket: PlayFab.settings.sessionTicket
           });
+          reject(new Error(`経験値の取得に失敗: ${error.errorMessage}`));
         }
       );
     });
-  });
-};
-
-// 経験値を初期化する関数
-const initializeExperience = async (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const sessionTicket = Cookies.get("token");
-    if (!sessionTicket) {
-      reject(new Error("セッションチケットが見つかりません"));
-      return;
-    }
-
-    PlayFab.settings.sessionTicket = sessionTicket;
-
-    PlayFab.PlayFabClient.UpdatePlayerStatistics(
-      {
-        Statistics: [
-          {
-            StatisticName: "Experience",
-            Value: 0
-          },
-          {
-            StatisticName: "DailyExperience",
-            Value: 0
-          },
-          {
-            StatisticName: "WeeklyExperience",
-            Value: 0
-          }
-        ]
-      },
-      (result: PlayFabResult) => {
-        console.log("統計データの初期化成功:", result);
-        resolve();
-      },
-      (error: PlayFabError) => {
-        console.error("統計データの初期化に失敗:", error);
-        reject(error);
-      }
-    );
   });
 };
 
@@ -326,6 +430,7 @@ export const updateExperience = async (expAmount: number): Promise<void> => {
       }
 
       PlayFab.settings.sessionTicket = sessionTicket;
+      console.log("UpdateExperience - セッションチケット:", sessionTicket);
 
       // 現在の経験値を取得
       getExperience()
@@ -342,36 +447,50 @@ export const updateExperience = async (expAmount: number): Promise<void> => {
             weekly: newWeeklyExp
           });
 
+          const statistics = [
+            {
+              StatisticName: "Experience",
+              Value: newTotalExp
+            },
+            {
+              StatisticName: "DailyExperience",
+              Value: newDailyExp
+            },
+            {
+              StatisticName: "WeeklyExperience",
+              Value: newWeeklyExp
+            }
+          ];
+
+          console.log("UpdatePlayerStatistics リクエスト:", {
+            Statistics: statistics
+          });
+
           // 経験値を更新
           PlayFab.PlayFabClient.UpdatePlayerStatistics(
             {
-              Statistics: [
-                {
-                  StatisticName: "Experience",
-                  Value: newTotalExp
-                },
-                {
-                  StatisticName: "DailyExperience",
-                  Value: newDailyExp
-                },
-                {
-                  StatisticName: "WeeklyExperience",
-                  Value: newWeeklyExp
-                }
-              ]
+              Statistics: statistics
             },
             (updateResult: PlayFabResult) => {
               console.log("UpdatePlayerStatistics レスポンス:", updateResult);
+              console.log("UpdatePlayerStatistics 詳細:", {
+                hasResult: !!updateResult,
+                resultType: updateResult ? typeof updateResult : 'undefined',
+                resultKeys: updateResult ? Object.keys(updateResult) : [],
+                hasData: !!updateResult?.data,
+                dataType: updateResult?.data ? typeof updateResult?.data : 'undefined',
+                dataKeys: updateResult?.data ? Object.keys(updateResult?.data) : []
+              });
               
               if (!updateResult) {
                 console.error("UpdatePlayerStatisticsの結果がnullです");
-                reject(new Error("経験値の更新に失敗しました"));
+                reject(new Error("経験値の更新に失敗: 結果がnullです"));
                 return;
               }
 
               if (!updateResult.data) {
                 console.error("UpdatePlayerStatisticsのデータが存在しません");
-                reject(new Error("経験値の更新に失敗しました"));
+                reject(new Error("経験値の更新に失敗: データが存在しません"));
                 return;
               }
 
@@ -383,7 +502,12 @@ export const updateExperience = async (expAmount: number): Promise<void> => {
             },
             (error: PlayFabError) => {
               console.error("経験値の更新に失敗:", error);
-              reject(error);
+              console.error("エラー詳細:", {
+                errorMessage: error.errorMessage,
+                errorCode: error.errorCode,
+                errorDetails: error.errorDetails
+              });
+              reject(new Error(`経験値の更新に失敗: ${error.errorMessage}`));
             }
           );
         })
