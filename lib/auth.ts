@@ -57,20 +57,55 @@ export const login = async ({ email, password }: { email: string; password: stri
   return new Promise((resolve, reject) => {
     PlayFab.PlayFabClient.LoginWithEmailAddress(
       { Email: email, Password: password },
-      (error: PlayFabError | null, result: PlayFabResult) => {
+      async (error: PlayFabError | null, result: PlayFabResult) => {
         if (error && error.errorMessage) {
           console.error("PlayFab login API error:", error);
           reject(new Error(error.errorMessage));
         } else if (result && result.data && result.data.SessionTicket) {
           const token = result.data.SessionTicket;
+          const playFabId = result.data.PlayFabId;
           console.log("ログイン後のSessionTicket:", token);
-          // Cookie "token" に保存（有効期限 1 日、全パスで有効）
-          Cookies.set("token", token, { expires: 1, path: "/" });
-          // PlayFab の設定にも保存
-          PlayFab.settings.sessionTicket = token;
-          console.log("Cookieに保存されたtoken:", Cookies.get("token"));
-          console.log("PlayFab.settings.sessionTicket:", PlayFab.settings.sessionTicket);
-          resolve(result);
+          
+          // カスタムIDを生成（PlayFabIdとタイムスタンプを組み合わせて）
+          const customId = `${playFabId}_${Date.now()}`;
+          
+          try {
+            // カスタムIDでの追加ログイン
+            await new Promise((resolveCustom, rejectCustom) => {
+              PlayFab.PlayFabClient.LoginWithCustomID(
+                {
+                  CustomId: customId,
+                  CreateAccount: true
+                },
+                (customError: PlayFabError | null, customResult: PlayFabResult) => {
+                  if (customError) {
+                    console.error("CustomID登録エラー:", customError);
+                    rejectCustom(customError);
+                  } else {
+                    console.log("CustomID登録成功:", customResult);
+                    resolveCustom(customResult);
+                  }
+                }
+              );
+            });
+
+            // Cookie に保存（有効期限 7 日、全パスで有効）
+            Cookies.set("token", token, { expires: 7, path: "/" });
+            Cookies.set("customId", customId, { expires: 7, path: "/" });
+            
+            // PlayFab の設定にも保存
+            PlayFab.settings.sessionTicket = token;
+            
+            console.log("Cookieに保存されたtoken:", Cookies.get("token"));
+            console.log("Cookieに保存されたcustomId:", Cookies.get("customId"));
+            console.log("PlayFab.settings.sessionTicket:", PlayFab.settings.sessionTicket);
+            
+            resolve(result);
+          } catch (customError) {
+            console.error("カスタムID登録中にエラーが発生しました:", customError);
+            // カスタムID登録に失敗しても、メインのログインは成功とみなす
+            resolve(result);
+          }
         } else {
           console.error("PlayFab login API error: no SessionTicket", { error, result });
           reject(new Error("ログインに失敗しました"));
