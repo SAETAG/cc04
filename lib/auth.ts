@@ -54,46 +54,77 @@ export const login = async ({ email, password }: { email: string; password: stri
       "PlayFab SDK が利用できません。クライアントサイドで実行されていることを確認してください。"
     );
   }
-  return new Promise((resolve, reject) => {
-    PlayFab.PlayFabClient.LoginWithEmailAddress(
-      { Email: email, Password: password },
-      async (error: PlayFabError | null, result: PlayFabResult) => {
-        if (error && error.errorMessage) {
-          console.error("PlayFab login API error:", error);
-          reject(new Error(error.errorMessage));
-        } else if (result && result.data && result.data.SessionTicket) {
-          const token = result.data.SessionTicket;
-          const playFabId = result.data.PlayFabId;
-          console.log("ログイン後のSessionTicket:", token);
 
-          // 先にセッションチケットを設定
-          PlayFab.settings.sessionTicket = token;
-          
-          try {
-            // カスタムIDの取得を試みる
-            const customId = await getOrCreateCustomId(playFabId);
-
-            // Cookie に保存（有効期限 7 日、全パスで有効）
-            Cookies.set("token", token, { expires: 7, path: "/" });
-            Cookies.set("customId", customId, { expires: 7, path: "/" });
-            
-            console.log("Cookieに保存されたtoken:", Cookies.get("token"));
-            console.log("Cookieに保存されたcustomId:", Cookies.get("customId"));
-            console.log("PlayFab.settings.sessionTicket:", PlayFab.settings.sessionTicket);
-            
-            resolve(result);
-          } catch (customError) {
-            console.error("カスタムID処理中にエラーが発生しました:", customError);
-            // カスタムID処理に失敗しても、メインのログインは成功とみなす
+  try {
+    // まずメールアドレスでログイン
+    const emailLoginResult = await new Promise<PlayFabResult>((resolve, reject) => {
+      PlayFab.PlayFabClient.LoginWithEmailAddress(
+        { Email: email, Password: password },
+        (error: PlayFabError | null, result: PlayFabResult) => {
+          if (error) {
+            console.error("PlayFab login API error:", error);
+            reject(error);
+          } else {
             resolve(result);
           }
-        } else {
-          console.error("PlayFab login API error: no SessionTicket", { error, result });
-          reject(new Error("ログインに失敗しました"));
         }
-      }
-    );
-  });
+      );
+    });
+
+    if (!emailLoginResult?.data?.SessionTicket || !emailLoginResult?.data?.PlayFabId) {
+      throw new Error("ログインに失敗しました: セッションチケットまたはPlayFabIdが取得できません");
+    }
+
+    const token = emailLoginResult.data.SessionTicket;
+    const playFabId = emailLoginResult.data.PlayFabId;
+
+    // セッションチケットを設定
+    PlayFab.settings.sessionTicket = token;
+    console.log("メールログイン成功。SessionTicket:", token);
+
+    // PlayFabIdをカスタムIDとして使用
+    const customId = playFabId;
+
+    try {
+      // カスタムIDでログイン（既存アカウントとリンク）
+      await new Promise<void>((resolve, reject) => {
+        PlayFab.PlayFabClient.LinkCustomID(
+          {
+            CustomId: customId,
+            ForceLink: true
+          },
+          (error: PlayFabError | null, result: PlayFabResult) => {
+            if (error) {
+              // エラーの場合、既にリンクされている可能性があるので無視
+              console.log("CustomID既にリンク済みの可能性があります:", error);
+              resolve();
+            } else {
+              console.log("CustomIDリンク成功:", result);
+              resolve();
+            }
+          }
+        );
+      });
+
+      // Cookie に保存（有効期限 7 日、全パスで有効）
+      Cookies.set("token", token, { expires: 7, path: "/" });
+      Cookies.set("customId", customId, { expires: 7, path: "/" });
+      
+      console.log("認証情報を保存しました");
+      console.log("- token:", Cookies.get("token"));
+      console.log("- customId:", Cookies.get("customId"));
+      console.log("- sessionTicket:", PlayFab.settings.sessionTicket);
+      
+      return emailLoginResult;
+    } catch (linkError) {
+      console.error("CustomIDリンク中にエラーが発生しました:", linkError);
+      // リンクに失敗しても、メインのログインは成功とみなす
+      return emailLoginResult;
+    }
+  } catch (error) {
+    console.error("ログイン処理中にエラーが発生しました:", error);
+    throw new Error(error?.errorMessage || "ログインに失敗しました");
+  }
 };
 
 // カスタムIDを取得または作成する関数
