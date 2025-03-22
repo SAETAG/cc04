@@ -144,33 +144,60 @@ export const restoreSession = async (): Promise<boolean> => {
       return false;
     }
 
-    // セッションチケットを設定
-    PlayFab.settings.sessionTicket = token;
-
-    // セッションの有効性を確認
-    const isValid = await new Promise<boolean>((resolve) => {
-      PlayFab.PlayFabClient.GetUserData(
-        { Keys: ["hasCompletedOnboarding"] },
-        (error: PlayFabError | null, result: PlayFabResult) => {
-          if (error) {
-            console.error("セッション確認エラー:", error);
-            resolve(false);
-          } else {
-            console.log("セッション復元成功");
-            resolve(true);
+    // まずカスタムIDでログインを試みる
+    try {
+      await new Promise<void>((resolve, reject) => {
+        PlayFab.PlayFabClient.LoginWithCustomID(
+          {
+            CustomId: customId,
+            CreateAccount: false
+          },
+          (error: PlayFabError | null, result: PlayFabResult) => {
+            if (error) {
+              console.error("CustomIDログインエラー:", error);
+              reject(error);
+            } else {
+              console.log("CustomIDログイン成功");
+              resolve();
+            }
           }
-        }
-      );
-    });
+        );
+      });
 
-    if (!isValid) {
-      // セッションが無効な場合はCookieを削除
+      // セッションチケットを設定
+      PlayFab.settings.sessionTicket = token;
+
+      // セッションの有効性を確認
+      const isValid = await new Promise<boolean>((resolve) => {
+        PlayFab.PlayFabClient.GetUserData(
+          { Keys: ["hasCompletedOnboarding"] },
+          (error: PlayFabError | null, result: PlayFabResult) => {
+            if (error) {
+              console.error("セッション確認エラー:", error);
+              resolve(false);
+            } else {
+              console.log("セッション復元成功");
+              resolve(true);
+            }
+          }
+        );
+      });
+
+      if (!isValid) {
+        // セッションが無効な場合はCookieを削除
+        Cookies.remove("token", { path: "/" });
+        Cookies.remove("customId", { path: "/" });
+        return false;
+      }
+
+      return true;
+    } catch (customLoginError) {
+      console.error("カスタムIDログインに失敗しました:", customLoginError);
+      // カスタムIDログインに失敗した場合はCookieを削除
       Cookies.remove("token", { path: "/" });
       Cookies.remove("customId", { path: "/" });
       return false;
     }
-
-    return true;
   } catch (error) {
     console.error("セッション復元中にエラーが発生しました:", error);
     return false;
