@@ -76,16 +76,10 @@ export const saveStageRecord = (data: {
 const reAuthenticate = async (): Promise<void> => {
   return new Promise<void>((resolve, reject) => {
     const customId = Cookies.get("customId");
-    const currentSessionTicket = Cookies.get("token");
-
     if (!customId) {
-      console.error("再認証失敗: カスタムIDが見つかりません");
-      Cookies.remove("token");
-      reject(new Error("認証情報が見つかりません"));
+      reject(new Error("カスタムIDが見つかりません"));
       return;
     }
-
-    console.log("再認証を試みます - CustomId:", customId);
 
     PlayFab.PlayFabClient.LoginWithCustomID(
       {
@@ -95,26 +89,17 @@ const reAuthenticate = async (): Promise<void> => {
       (result: PlayFabResult) => {
         if (result.data.SessionTicket) {
           const newSessionTicket = result.data.SessionTicket;
-          if (newSessionTicket !== currentSessionTicket) {
-            console.log("新しいセッションチケットを保存します");
-            Cookies.set("token", newSessionTicket, { expires: 7 });
-            PlayFab.settings.sessionTicket = newSessionTicket;
-          }
-          console.log("再認証成功");
+          Cookies.set("token", newSessionTicket, { expires: 7 });
+          PlayFab.settings.sessionTicket = newSessionTicket;
+          console.log("再認証成功:", newSessionTicket);
           resolve();
         } else {
-          console.error("再認証失敗: セッションチケットが取得できません");
-          reject(new Error("セッションチケットの取得に失敗しました"));
+          reject(new Error("セッションチケットが取得できませんでした"));
         }
       },
       (error: PlayFabError) => {
         console.error("再認証エラー:", error);
-        if (error.errorCode === 1001 || error.errorMessage?.includes("must be logged in")) {
-          Cookies.remove("token");
-          reject(new Error("セッションが無効です"));
-        } else {
-          reject(error);
-        }
+        reject(error);
       }
     );
   });
@@ -123,34 +108,18 @@ const reAuthenticate = async (): Promise<void> => {
 // エラーハンドリングを含むPlayFab APIの呼び出しラッパー
 const callPlayFabAPI = async <T>(apiCall: () => Promise<T>, retryCount = 0): Promise<T> => {
   try {
-    // APIコール前にセッションチケットの存在確認
-    const sessionTicket = Cookies.get("token");
-    if (!sessionTicket) {
-      console.log("セッションチケットが見つかりません。再認証を試みます...");
-      await reAuthenticate();
-    }
-
     return await apiCall();
   } catch (error: any) {
-    console.log("API呼び出しエラー:", error);
-
-    // セッションエラーの検出
-    const isSessionError = 
-      error?.errorCode === 1000 || // InvalidSessionTicket
-      error?.errorCode === 1001 || // SessionTicketExpired
-      error?.errorMessage?.includes("must be logged in");
-
-    if (isSessionError && retryCount < 2) {
-      console.log("セッションエラーを検出。再認証を試みます...");
+    if (error?.errorMessage?.includes("must be logged in") && retryCount < 2) {
+      console.log("セッション切れを検出。再認証を試みます...");
       try {
         await reAuthenticate();
         return await callPlayFabAPI(apiCall, retryCount + 1);
       } catch (reAuthError) {
         console.error("再認証に失敗しました:", reAuthError);
-        throw new Error("再認証に失敗しました");
+        throw reAuthError;
       }
     }
-
     throw error;
   }
 };
