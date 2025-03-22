@@ -65,76 +65,17 @@ export const login = async ({ email, password }: { email: string; password: stri
           const token = result.data.SessionTicket;
           const playFabId = result.data.PlayFabId;
           console.log("ログイン後のSessionTicket:", token);
+
+          // 先にセッションチケットを設定
+          PlayFab.settings.sessionTicket = token;
           
           try {
-            // ユーザーデータからカスタムIDを取得
-            const userData = await new Promise<any>((resolveData, rejectData) => {
-              PlayFab.PlayFabClient.GetUserData(
-                {
-                  Keys: ["customId"]
-                },
-                (dataError: PlayFabError | null, dataResult: PlayFabResult) => {
-                  if (dataError) {
-                    console.error("ユーザーデータ取得エラー:", dataError);
-                    rejectData(dataError);
-                  } else {
-                    resolveData(dataResult);
-                  }
-                }
-              );
-            });
-
-            let customId = userData?.data?.Data?.customId?.Value;
-
-            if (!customId) {
-              // カスタムIDが存在しない場合は新規作成
-              customId = `${playFabId}_${Date.now()}`;
-              
-              // カスタムIDをユーザーデータに保存
-              await new Promise<void>((resolveSave, rejectSave) => {
-                PlayFab.PlayFabClient.UpdateUserData(
-                  {
-                    Data: { customId },
-                    Permission: "Private"
-                  },
-                  (saveError: PlayFabError | null, saveResult: PlayFabResult) => {
-                    if (saveError) {
-                      console.error("カスタムID保存エラー:", saveError);
-                      rejectSave(saveError);
-                    } else {
-                      console.log("カスタムID保存成功");
-                      resolveSave();
-                    }
-                  }
-                );
-              });
-            }
-
-            // カスタムIDでログイン
-            await new Promise((resolveCustom, rejectCustom) => {
-              PlayFab.PlayFabClient.LoginWithCustomID(
-                {
-                  CustomId: customId,
-                  CreateAccount: true
-                },
-                (customError: PlayFabError | null, customResult: PlayFabResult) => {
-                  if (customError) {
-                    console.error("CustomIDログインエラー:", customError);
-                    rejectCustom(customError);
-                  } else {
-                    console.log("CustomIDログイン成功:", customResult);
-                    resolveCustom(customResult);
-                  }
-                }
-              );
-            });
+            // カスタムIDの取得を試みる
+            const customId = await getOrCreateCustomId(playFabId);
 
             // Cookie に保存（有効期限 7 日、全パスで有効）
             Cookies.set("token", token, { expires: 7, path: "/" });
             Cookies.set("customId", customId, { expires: 7, path: "/" });
-            
-            // PlayFab の設定にも保存
-            PlayFab.settings.sessionTicket = token;
             
             console.log("Cookieに保存されたtoken:", Cookies.get("token"));
             console.log("Cookieに保存されたcustomId:", Cookies.get("customId"));
@@ -153,6 +94,78 @@ export const login = async ({ email, password }: { email: string; password: stri
       }
     );
   });
+};
+
+// カスタムIDを取得または作成する関数
+const getOrCreateCustomId = async (playFabId: string): Promise<string> => {
+  try {
+    // まず既存のカスタムIDを取得
+    const userData = await new Promise<PlayFabResult>((resolveData, rejectData) => {
+      PlayFab.PlayFabClient.GetUserData(
+        {
+          Keys: ["customId"]
+        },
+        (dataError: PlayFabError | null, dataResult: PlayFabResult) => {
+          if (dataError) {
+            console.error("ユーザーデータ取得エラー:", dataError);
+            rejectData(dataError);
+          } else {
+            resolveData(dataResult);
+          }
+        }
+      );
+    });
+
+    let customId = userData?.data?.Data?.customId?.Value;
+
+    if (!customId) {
+      // カスタムIDが存在しない場合は新規作成
+      customId = playFabId; // PlayFabIdをそのままカスタムIDとして使用
+      
+      // カスタムIDをユーザーデータに保存
+      await new Promise<void>((resolveSave, rejectSave) => {
+        PlayFab.PlayFabClient.UpdateUserData(
+          {
+            Data: { customId },
+            Permission: "Private"
+          },
+          (saveError: PlayFabError | null) => {
+            if (saveError) {
+              console.error("カスタムID保存エラー:", saveError);
+              rejectSave(saveError);
+            } else {
+              console.log("カスタムID保存成功");
+              resolveSave();
+            }
+          }
+        );
+      });
+    }
+
+    // カスタムIDでログイン
+    await new Promise((resolveCustom, rejectCustom) => {
+      PlayFab.PlayFabClient.LoginWithCustomID(
+        {
+          CustomId: customId,
+          CreateAccount: true
+        },
+        (customError: PlayFabError | null, customResult: PlayFabResult) => {
+          if (customError) {
+            console.error("CustomIDログインエラー:", customError);
+            rejectCustom(customError);
+          } else {
+            console.log("CustomIDログイン成功:", customResult);
+            resolveCustom(customResult);
+          }
+        }
+      );
+    });
+
+    return customId;
+  } catch (error) {
+    console.error("カスタムID処理エラー:", error);
+    throw error;
+  }
 };
 
 // 初回ログインかどうかを確認する関数
