@@ -38,6 +38,11 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
             (async function() {
+              // ログインページではセッション復元をスキップ
+              if (window.location.pathname === '/login') {
+                return;
+              }
+
               try {
                 // PlayFab SDKが読み込まれるまで待機
                 let retryCount = 0;
