@@ -111,7 +111,7 @@ export const saveStageRecord = (data: {
   });
 };
 
-// セッションの再認証を行う関数
+// セッションの再認証を行う関数を改善
 const reAuthenticate = async (): Promise<void> => {
   return new Promise<void>((resolve, reject) => {
     const customId = Cookies.get("customId");
@@ -119,6 +119,8 @@ const reAuthenticate = async (): Promise<void> => {
       reject(new Error("カスタムIDが見つかりません"));
       return;
     }
+
+    console.log("再認証開始 - CustomId:", customId);
 
     PlayFab.PlayFabClient.LoginWithCustomID(
       {
@@ -128,9 +130,10 @@ const reAuthenticate = async (): Promise<void> => {
       (result: PlayFabResult) => {
         if (result.data.SessionTicket) {
           const newSessionTicket = result.data.SessionTicket;
+          // セッションチケットの有効期限を7日間に設定
           Cookies.set("token", newSessionTicket, { expires: 7 });
           PlayFab.settings.sessionTicket = newSessionTicket;
-          console.log("再認証成功:", newSessionTicket);
+          console.log("再認証成功 - 新しいセッションチケット:", newSessionTicket);
           resolve();
         } else {
           reject(new Error("セッションチケットが取得できませんでした"));
@@ -139,6 +142,39 @@ const reAuthenticate = async (): Promise<void> => {
       (error: PlayFabError) => {
         console.error("再認証エラー:", error);
         reject(error);
+      }
+    );
+  });
+};
+
+// セッションの有効性を確認する関数を追加
+const validateSession = async (): Promise<boolean> => {
+  return new Promise<boolean>((resolve) => {
+    const sessionTicket = Cookies.get("token");
+    if (!sessionTicket) {
+      console.log("セッションチケットが存在しません");
+      resolve(false);
+      return;
+    }
+
+    PlayFab.settings.sessionTicket = sessionTicket;
+
+    PlayFab.PlayFabClient.GetPlayerStatistics(
+      {
+        StatisticNames: ["Experience"]
+      },
+      (result: PlayFabResult) => {
+        if (result?.error?.errorMessage?.includes("must be logged in")) {
+          console.log("セッションが無効です");
+          resolve(false);
+          return;
+        }
+        console.log("セッションは有効です");
+        resolve(true);
+      },
+      (error: PlayFabError) => {
+        console.error("セッション確認エラー:", error);
+        resolve(false);
       }
     );
   });
@@ -263,59 +299,39 @@ const initializeExperience = async (): Promise<void> => {
         }
 
         // 統計データが存在しない場合は初期化を実行
-        const updateRequest = {
-          Statistics: [
-            {
-              StatisticName: "Experience",
-              Value: 0
-            }
-          ]
-        };
-
-        console.log("統計データの初期化リクエスト:", updateRequest);
-
-        // リトライロジックを実装
-        const retryUpdate = (attempt: number = 1) => {
-          PlayFab.PlayFabClient.UpdatePlayerStatistics(
-            updateRequest,
-            (updateResult: PlayFabResult) => {
-              console.log("統計データの初期化結果:", updateResult);
-              console.log("統計データの初期化詳細:", updateResult);
-
-              if (!updateResult) {
-                if (attempt < 3) {
-                  console.log(`統計データの初期化を再試行します (${attempt}/3)`);
-                  setTimeout(() => retryUpdate(attempt + 1), 1000 * attempt);
-                } else {
-                  // エラーが発生した場合でも、統計データは存在する可能性があるため、
-                  // ここでは成功として扱う
-                  console.log("統計データの初期化は失敗しましたが、処理を継続します");
-                  resolve();
-                }
-                return;
+        PlayFab.PlayFabClient.UpdatePlayerStatistics(
+          {
+            Statistics: [
+              {
+                StatisticName: "Experience",
+                Value: 0
               }
-
-              if (updateResult.error) {
-                console.error("統計データの初期化エラー:", updateResult.error);
-                // エラーが発生した場合でも、統計データは存在する可能性があるため、
-                // ここでは成功として扱う
-                console.log("統計データの初期化は失敗しましたが、処理を継続します");
-                resolve();
-                return;
-              }
-
-              resolve();
+            ]
+          },
+          (updateResult: PlayFabResult) => {
+            console.log("統計データの初期化結果:", updateResult);
+            if (updateResult?.error) {
+              console.error("統計データの初期化エラー:", updateResult.error);
+              reject(updateResult.error);
+              return;
             }
-          );
-        };
-
-        retryUpdate();
+            resolve();
+          },
+          (error: PlayFabError) => {
+            console.error("統計データの初期化エラー:", error);
+            reject(error);
+          }
+        );
+      },
+      (error: PlayFabError) => {
+        console.error("統計データの確認エラー:", error);
+        reject(error);
       }
     );
   });
 };
 
-// 経験値を取得する関数
+// 経験値を取得する関数を改善
 const getExperience = async (): Promise<number> => {
   return new Promise((resolve, reject) => {
     const sessionTicket = Cookies.get("token");
@@ -333,96 +349,139 @@ const getExperience = async (): Promise<number> => {
       },
       (result: PlayFabResult) => {
         console.log("GetPlayerStatistics レスポンス:", result);
-        console.log("GetPlayerStatistics 詳細:", result);
-
-        if (!result) {
-          console.log("統計データが存在しないため、初期化を実行します");
-          // 統計データが存在しない場合は初期化を実行
-          initializeExperience()
-            .then(() => {
-              console.log("統計データの初期化成功");
-              resolve(0); // 初期値として0を返す
-            })
-            .catch(error => {
-              console.error("統計データの初期化に失敗:", error);
-              // エラーが発生した場合でも、0を返す
-              console.log("統計データの初期化は失敗しましたが、0を返します");
-              resolve(0);
-            });
+        
+        if (result?.error) {
+          console.error("GetPlayerStatisticsエラー:", result.error);
+          reject(result.error);
           return;
         }
 
-        if (result.error) {
-          console.error("GetPlayerStatisticsエラー:", result.error);
-          // エラーが発生した場合でも、0を返す
-          console.log("統計データの取得に失敗しましたが、0を返します");
+        // データが存在しない場合は0を返す
+        if (!result?.data?.Statistics || result.data.Statistics.length === 0) {
+          console.log("統計データが存在しません");
           resolve(0);
           return;
         }
 
-        const experience = result.data?.Statistics?.find(stat => stat.StatisticName === "Experience")?.Value || 0;
+        // データが存在する場合はその値を返す
+        const experience = result.data.Statistics.find(stat => stat.StatisticName === "Experience")?.Value || 0;
+        console.log("取得した経験値:", experience);
         resolve(experience);
+      },
+      (error: PlayFabError) => {
+        console.error("GetPlayerStatisticsエラー:", error);
+        reject(error);
       }
     );
   });
 };
 
-// 経験値を更新する関数
+// 経験値を更新する関数を改善
 export const updateExperience = async (expAmount: number): Promise<void> => {
-  await callPlayFabAPI(async () => {
-    console.log("UpdateExperience - セッションチケット:", Cookies.get("token"));
+  try {
+    // セッションの有効性を確認
+    const isValidSession = await validateSession();
+    if (!isValidSession) {
+      console.log("セッションが無効です。再認証を試みます...");
+      await reAuthenticate();
+    }
 
-    // 現在の経験値を取得
-    return getExperience()
-      .then(currentExp => {
-        // 新しい経験値を計算
-        const newExp = currentExp + expAmount;
+    return new Promise((resolve, reject) => {
+      const sessionTicket = Cookies.get("token");
+      if (!sessionTicket) {
+        reject(new Error("セッションチケットが見つかりません"));
+        return;
+      }
 
-        console.log("更新前の経験値:", currentExp);
-        console.log("更新後の経験値:", newExp);
+      PlayFab.settings.sessionTicket = sessionTicket;
+      console.log("経験値更新開始 - セッションチケット:", sessionTicket);
 
-        return new Promise<void>((resolve, reject) => {
-          PlayFab.PlayFabClient.UpdatePlayerStatistics(
-            {
-              Statistics: [
-                {
-                  StatisticName: "Experience",
-                  Value: newExp
+      // 現在の経験値を取得
+      getExperience()
+        .then(currentExp => {
+          console.log("現在の経験値:", currentExp);
+          // 新しい経験値を計算
+          const newExp = currentExp + expAmount;
+          console.log("更新後の経験値:", newExp);
+
+          // 経験値を更新（リトライロジック付き）
+          const updateWithRetry = (retryCount = 0) => {
+            PlayFab.PlayFabClient.UpdatePlayerStatistics(
+              {
+                Statistics: [
+                  {
+                    StatisticName: "Experience",
+                    Value: newExp,
+                    Version: 0 // バージョンを明示的に指定
+                  }
+                ]
+              },
+              (result: PlayFabResult) => {
+                console.log("UpdatePlayerStatistics レスポンス:", result);
+                if (result?.error) {
+                  console.error("UpdatePlayerStatisticsエラー:", result.error);
+                  if (retryCount < 2) {
+                    console.log(`リトライを試みます (${retryCount + 1}/3)`);
+                    setTimeout(() => updateWithRetry(retryCount + 1), 1000);
+                    return;
+                  }
+                  reject(result.error);
+                  return;
                 }
-              ]
-            },
-            (result: PlayFabResult) => {
-              console.log("UpdatePlayerStatistics レスポンス:", result);
 
-              // nullレスポンスを許容
-              if (!result) {
-                console.log("UpdatePlayerStatisticsのレスポンスがnullですが、処理を継続します");
-                resolve();
-                return;
+                // 更新後の値を確認（少し待機してから）
+                setTimeout(() => {
+                  getExperience()
+                    .then(verifiedExp => {
+                      console.log("更新後の確認 - 経験値:", verifiedExp);
+                      if (verifiedExp === newExp) {
+                        console.log("経験値の更新が完了しました");
+                        resolve();
+                      } else if (retryCount < 2) {
+                        console.log(`確認に失敗しました。リトライを試みます (${retryCount + 1}/3)`);
+                        setTimeout(() => updateWithRetry(retryCount + 1), 1000);
+                      } else {
+                        console.warn("経験値の更新が正しく保存されていない可能性があります");
+                        // エラーをスローせずに、更新を成功として扱う
+                        console.log("更新は完了しましたが、確認に失敗しました");
+                        resolve();
+                      }
+                    })
+                    .catch(error => {
+                      console.error("更新後の確認に失敗しました:", error);
+                      if (retryCount < 2) {
+                        console.log(`確認に失敗しました。リトライを試みます (${retryCount + 1}/3)`);
+                        setTimeout(() => updateWithRetry(retryCount + 1), 1000);
+                      } else {
+                        // エラーをスローせずに、更新を成功として扱う
+                        console.log("更新は完了しましたが、確認に失敗しました");
+                        resolve();
+                      }
+                    });
+                }, 5000); // 5秒待機
+              },
+              (error: PlayFabError) => {
+                console.error("UpdatePlayerStatisticsエラー:", error);
+                if (retryCount < 2) {
+                  console.log(`リトライを試みます (${retryCount + 1}/3)`);
+                  setTimeout(() => updateWithRetry(retryCount + 1), 1000);
+                  return;
+                }
+                reject(error);
               }
+            );
+          };
 
-              if (result.error) {
-                console.error("UpdatePlayerStatisticsエラー:", result.error);
-                // エラーが発生した場合でも、統計データは更新されている可能性があるため、
-                // ここでは成功として扱う
-                console.log("UpdatePlayerStatisticsは失敗しましたが、処理を継続します");
-                resolve();
-                return;
-              }
-
-              console.log(`経験値を更新しました：
-                累積: ${currentExp} → ${newExp} (+${expAmount})`);
-              resolve();
-            }
-          );
+          // 最初の更新を実行
+          updateWithRetry();
+        })
+        .catch(error => {
+          console.error("経験値の取得に失敗しました:", error);
+          reject(error);
         });
-      })
-      .catch(error => {
-        console.error("現在の経験値の取得に失敗:", error);
-        // エラーが発生した場合でも、統計データは更新されている可能性があるため、
-        // ここでは成功として扱う
-        console.log("経験値の更新は失敗しましたが、処理を継続します");
-        return Promise.resolve();
-      });
-  });
+    });
+  } catch (error) {
+    console.error("経験値の更新に失敗しました:", error);
+    throw error;
+  }
 };
