@@ -105,7 +105,7 @@ export default function ClosetPage() {
               
               PlayFab.PlayFabClient.GetUserData(
                 {
-                  Keys: ["stage1_complete"],
+                  Keys: ["stage1_complete", "stage2_complete", "stage3_complete", "stage4_complete", "stage5_complete", "stage6_complete", "stage7_complete", "stage8_complete", "stage9_complete", "stage10_complete", "stage11_complete", "stage12_complete", "stage13_complete"],
                   PlayFabId: null
                 },
                 function(error: any, result: any) {
@@ -186,15 +186,76 @@ export default function ClosetPage() {
             
             if (result?.data?.Data) {
               const stage1Complete = result.data.Data?.stage1_complete?.Value;
+              const stage2Complete = result.data.Data?.stage2_complete?.Value;
+              const stage3Complete = result.data.Data?.stage3_complete?.Value;
+              const stage4Complete = result.data.Data?.stage4_complete?.Value;
+              const stage5Complete = result.data.Data?.stage5_complete?.Value;
+              const stage6Complete = result.data.Data?.stage6_complete?.Value;
+              const stage7Complete = result.data.Data?.stage7_complete?.Value;
+              const stage8Complete = result.data.Data?.stage8_complete?.Value;
+              const stage9Complete = result.data.Data?.stage9_complete?.Value;
+              const stage10Complete = result.data.Data?.stage10_complete?.Value;
+              const stage11Complete = result.data.Data?.stage11_complete?.Value;
+              const stage12Complete = result.data.Data?.stage12_complete?.Value;
+              const stage13Complete = result.data.Data?.stage13_complete?.Value;
               console.log("stage1_complete:", stage1Complete);
+              console.log("stage2_complete:", stage2Complete);
+              console.log("stage3_complete:", stage3Complete);
+              console.log("stage4_complete:", stage4Complete);
+              console.log("stage5_complete:", stage5Complete);
+              console.log("stage6_complete:", stage6Complete);
+              console.log("stage7_complete:", stage7Complete);
+              console.log("stage8_complete:", stage8Complete);
+              console.log("stage9_complete:", stage9Complete);
+              console.log("stage10_complete:", stage10Complete);
+              console.log("stage11_complete:", stage11Complete);
+              console.log("stage12_complete:", stage12Complete);
+              console.log("stage13_complete:", stage13Complete);
               
-              if (stage1Complete === "true") {
-                setStagesData((prev) =>
-                  prev.map((stage) =>
-                    stage.id === 2 ? { ...stage, unlocked: true } : stage
-                  )
-                );
-              }
+              setStagesData((prev) =>
+                prev.map((stage) => {
+                  if (stage.id === 2 && stage1Complete === "true") {
+                    return { ...stage, unlocked: true };
+                  }
+                  if (stage.id === 3 && stage2Complete === "true") {
+                    return { ...stage, unlocked: true };
+                  }
+                  if (stage.id === 4 && stage3Complete === "true") {
+                    return { ...stage, unlocked: true };
+                  }
+                  if (stage.id === 5 && stage4Complete === "true") {
+                    return { ...stage, unlocked: true };
+                  }
+                  if (stage.id === 6 && stage5Complete === "true") {
+                    return { ...stage, unlocked: true };
+                  }
+                  if (stage.id === 7 && stage6Complete === "true") {
+                    return { ...stage, unlocked: true };
+                  }
+                  if (stage.id === 8 && stage7Complete === "true") {
+                    return { ...stage, unlocked: true };
+                  }
+                  if (stage.id === 9 && stage8Complete === "true") {
+                    return { ...stage, unlocked: true };
+                  }
+                  if (stage.id === 10 && stage9Complete === "true") {
+                    return { ...stage, unlocked: true };
+                  }
+                  if (stage.id === 11 && stage10Complete === "true") {
+                    return { ...stage, unlocked: true };
+                  }
+                  if (stage.id === 12 && stage11Complete === "true") {
+                    return { ...stage, unlocked: true };
+                  }
+                  if (stage.id === 13 && stage12Complete === "true") {
+                    return { ...stage, unlocked: true };
+                  }
+                  if (stage.id === 14 && stage13Complete === "true") {
+                    return { ...stage, unlocked: true };
+                  }
+                  return stage;
+                })
+              );
             } else {
               console.log("ステージデータが存在しません（初回アクセス時は正常）");
             }

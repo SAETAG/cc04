@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Volume2, VolumeX, ArrowLeft, Home, Tag, Share2, CheckCircle2, Info } from "lucide-react"
+import { saveStageComplete } from "@/lib/playfab"
 
 export default function Battle13() {
   const router = useRouter()
@@ -103,14 +104,21 @@ export default function Battle13() {
     setIsMuted(!isMuted)
   }
 
-  const handleComplete = () => {
-    // 次のページに移動する前に確実に音声を停止
-    if (audio) {
-      audio.pause()
-      audio.currentTime = 0
+  const handleComplete = async () => {
+    try {
+      // 次のページに移動する前に確実に音声を停止
+      if (audio) {
+        audio.pause()
+        audio.currentTime = 0
+      }
+      await saveStageComplete(13);
+      console.log("ステージ13クリアデータを保存しました");
+      router.push("/closet/13/clear");
+    } catch (error) {
+      console.error("Error saving completion:", error);
+      alert("保存中にエラーが発生しました。もう一度お試しください。");
     }
-    router.push("/closet/13/clear")
-  }
+  };
 
   const handleCheckboxChange = (item: keyof typeof checkedItems) => {
     setCheckedItems({

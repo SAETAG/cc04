@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Volume2, VolumeX, ArrowLeft, Home, CheckCircle2, Trash2, Archive, FolderOutput, Clock } from "lucide-react"
+import { saveStageComplete } from "@/lib/playfab"
 
 export default function Stage2BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
@@ -13,6 +14,7 @@ export default function Stage2BattlePage() {
   const [boxesReady, setBoxesReady] = useState([false, false, false, false])
   const [isSaving, setIsSaving] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [isCompleting, setIsCompleting] = useState(false)
   const router = useRouter()
 
   // クライアントサイドでのみ実行されるようにする
@@ -139,25 +141,17 @@ export default function Stage2BattlePage() {
   const allBoxesReady = boxesReady.every((ready) => ready)
 
   // Save record to database and navigate to clear page
-  const saveRecord = async () => {
-    setIsSaving(true)
-
+  const handleComplete = async () => {
     try {
-      // Simulate saving to database
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // In a real app, you would save the data to your database here
-      console.log("Saving record:", {
-        boxesReady,
-      })
-
-      // Navigate to clear page
+      setIsCompleting(true)
+      await saveStageComplete(2)
+      console.log("ステージ2クリアデータを保存しました")
       router.push("/closet/2/clear")
     } catch (error) {
-      console.error("Error saving record:", error)
-      alert("保存中にエラーが発生しました。もう一度お試しください。")
+      console.error("ステージ2クリアデータの保存に失敗:", error)
+      alert("クリアデータの保存に失敗しました。もう一度お試しください。")
     } finally {
-      setIsSaving(false)
+      setIsCompleting(false)
     }
   }
 
@@ -301,11 +295,11 @@ export default function Stage2BattlePage() {
           {/* Submit button */}
           <div className="flex justify-center mt-8">
             <Button
-              onClick={saveRecord}
-              disabled={isSaving || !allBoxesReady}
+              onClick={handleComplete}
+              disabled={isCompleting || !allBoxesReady}
               className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold py-4 px-10 text-xl rounded-lg shadow-lg transform hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              {isSaving ? "保存中..." : "準備完了！"}
+              {isCompleting ? "保存中..." : "準備完了！"}
             </Button>
           </div>
         </div>

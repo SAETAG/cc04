@@ -14,6 +14,7 @@ import {
   ArrowUpIcon as BackArrow,
   Home,
 } from "lucide-react"
+import { saveStageComplete } from "@/lib/playfab"
 
 export default function Stage13Battle() {
   const router = useRouter()
@@ -105,9 +106,16 @@ export default function Stage13Battle() {
     }
   }
 
-  const handleComplete = () => {
-    router.push("/closet/12/clear")
-  }
+  const handleComplete = async () => {
+    try {
+      await saveStageComplete(12);
+      console.log("ステージ12クリアデータを保存しました");
+      router.push("/closet/12/clear");
+    } catch (error) {
+      console.error("Error saving completion:", error);
+      alert("保存中にエラーが発生しました。もう一度お試しください。");
+    }
+  };
 
   const checklistItems = [
     {

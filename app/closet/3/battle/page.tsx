@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Volume2, VolumeX, ArrowLeft, Home } from "lucide-react"
+import { saveStageComplete } from "@/lib/playfab"
 
 export default function Stage3BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
@@ -84,19 +85,12 @@ export default function Stage3BattlePage() {
     setIsSaving(true)
 
     try {
-      // Simulate saving to database
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // In a real app, you would save the data to your database here
-      console.log("Saving record:", {
-        progress,
-      })
-
-      // Navigate to clear page
+      await saveStageComplete(3)
+      console.log("ステージ3クリアデータを保存しました")
       router.push("/closet/3/clear")
     } catch (error) {
-      console.error("Error saving record:", error)
-      alert("保存中にエラーが発生しました。もう一度お試しください。")
+      console.error("ステージ3クリアデータの保存に失敗:", error)
+      alert("クリアデータの保存に失敗しました。もう一度お試しください。")
     } finally {
       setIsSaving(false)
     }

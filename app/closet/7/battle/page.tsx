@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Volume2, VolumeX, ArrowLeft, Home, Check, CheckCircle2 } from "lucide-react"
+import { saveStageComplete } from "@/lib/playfab"
 
 export default function Stage7BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
@@ -130,15 +131,9 @@ export default function Stage7BattlePage() {
     setIsSaving(true)
 
     try {
-      // Simulate saving to database
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // In a real app, you would save the data to your database here
-      console.log("Saving record:", {
-        rackLength,
-        hangerCount,
-        checksCompleted,
-      })
+      // Save stage completion data
+      await saveStageComplete(7)
+      console.log("ステージ7クリアデータを保存しました")
 
       // Navigate to clear page
       router.push("/closet/7/clear")

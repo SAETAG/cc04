@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Volume2, VolumeX, ArrowLeft, Home, Trash2 } from "lucide-react"
+import { saveStageComplete } from "@/lib/playfab"
 
 export default function Stage5BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
@@ -99,15 +100,14 @@ export default function Stage5BattlePage() {
     setIsSaving(true)
 
     try {
-      // Simulate saving to database
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Save stage completion data
+      await saveStageComplete(5)
+      console.log("ステージ5クリアデータを保存しました")
 
-      // In a real app, you would save the data to your database here
-      console.log("Saving record:", {
-        discardItems,
-      })
+      // Wait a bit to ensure the data is saved
+      await new Promise(resolve => setTimeout(resolve, 500))
 
-      // Show feedback card instead of immediately navigating
+      // Show feedback card
       setShowFeedback(true)
       setIsSaving(false)
 

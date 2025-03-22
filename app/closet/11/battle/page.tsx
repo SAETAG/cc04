@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Volume2, VolumeX, ArrowLeft, Home, Heart, Save, AlertCircle } from "lucide-react"
+import { saveStageComplete } from "@/lib/playfab"
 
 // Feeling type definition
 type Feeling = {
@@ -193,13 +194,9 @@ export default function Stage11BattlePage() {
     setIsSaving(true)
 
     try {
-      // Simulate saving to database
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // In a real app, you would save the data to your database here
-      console.log("Saving record:", {
-        selectedFeelings: feelings.filter((f) => f.selected).map((f) => f.text),
-      })
+      // Save stage completion data to PlayFab
+      await saveStageComplete(11)
+      console.log("ステージ11クリアデータを保存しました")
 
       // Navigate to clear page
       router.push("/closet/11/clear")

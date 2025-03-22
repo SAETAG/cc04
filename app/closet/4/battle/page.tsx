@@ -6,13 +6,14 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Volume2, VolumeX, ArrowLeft, Home } from "lucide-react"
+import { saveStageComplete } from "@/lib/playfab"
 
 export default function Stage4BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [criteriaChecked, setCriteriaChecked] = useState(Array(10).fill(false))
   const [isMobile, setIsMobile] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const [isCompleting, setIsCompleting] = useState(false)
   const router = useRouter()
 
   // Check if device is mobile
@@ -93,25 +94,17 @@ export default function Stage4BattlePage() {
   const allCriteriaChecked = criteriaChecked.every((checked) => checked)
 
   // Save record to database and navigate to clear page
-  const saveRecord = async () => {
-    setIsSaving(true)
-
+  const handleComplete = async () => {
     try {
-      // Simulate saving to database
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // In a real app, you would save the data to your database here
-      console.log("Saving record:", {
-        criteriaChecked,
-      })
-
-      // Navigate to clear page
+      setIsCompleting(true)
+      await saveStageComplete(4)
+      console.log("ステージ4クリアデータを保存しました")
       router.push("/closet/4/clear")
     } catch (error) {
-      console.error("Error saving record:", error)
-      alert("保存中にエラーが発生しました。もう一度お試しください。")
+      console.error("ステージ4クリアデータの保存に失敗:", error)
+      alert("クリアデータの保存に失敗しました。もう一度お試しください。")
     } finally {
-      setIsSaving(false)
+      setIsCompleting(false)
     }
   }
 
@@ -334,11 +327,11 @@ export default function Stage4BattlePage() {
           {/* Submit button */}
           <div className="flex justify-center mt-6">
             <Button
-              onClick={saveRecord}
-              disabled={isSaving || !allCriteriaChecked}
+              onClick={handleComplete}
+              disabled={isCompleting || !allCriteriaChecked}
               className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-purple-900 font-bold py-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSaving ? "保存中..." : "選別完了！"}
+              {isCompleting ? "保存中..." : "選別完了！"}
             </Button>
           </div>
         </div>

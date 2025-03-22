@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Volume2, VolumeX, ArrowLeft, Home, MapPin } from "lucide-react"
+import { saveStageComplete } from "@/lib/playfab"
 
 export default function Stage10BattlePage() {
   // 状態の変更
@@ -112,13 +113,9 @@ export default function Stage10BattlePage() {
     setIsSaving(true)
 
     try {
-      // Simulate saving to database
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // In a real app, you would save the data to your database here
-      console.log("Saving record:", {
-        storageChecked,
-      })
+      // Save stage completion data
+      await saveStageComplete(10)
+      console.log("ステージ10クリアデータを保存しました")
 
       // Show feedback card instead of immediately navigating
       setShowFeedback(true)

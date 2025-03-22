@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Volume2, VolumeX, ArrowLeft, Home, Trash2, CheckCircle2, ArrowRight } from "lucide-react"
+import { saveStageComplete } from "@/lib/playfab"
 
 export default function Stage6BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
@@ -146,14 +147,9 @@ export default function Stage6BattlePage() {
     setIsSaving(true)
 
     try {
-      // Simulate saving to database
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // In a real app, you would save the data to your database here
-      console.log("Saving record:", {
-        sageItems,
-        fateItems,
-      })
+      // Save stage completion data
+      await saveStageComplete(6)
+      console.log("ステージ6クリアデータを保存しました")
 
       // Navigate to clear page
       router.push("/closet/6/clear")

@@ -9,100 +9,159 @@ export default function Stage11ClearPage() {
   const [isMuted, setIsMuted] = useState(false)
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [audioLoaded, setAudioLoaded] = useState(false)
-  const [showConfetti, setShowConfetti] = useState(true)
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [confettiItems, setConfettiItems] = useState<Array<{
+    left: string;
+    width: string;
+    height: string;
+    background: string;
+    transform: string;
+    animationDelay: string;
+    animationDuration: string;
+  }>>([])
 
   // シンプルな音声初期化
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    let audioElement: HTMLAudioElement | null = null;
+
+    const initAudio = async () => {
+      if (typeof window === "undefined") return;
+
       try {
-        const audioElement = new Audio("/stepclear.mp3")
-        audioElement.loop = true
-        audioElement.volume = 0.7
-        audioElement.preload = "auto"
+        audioElement = new Audio();
+        audioElement.src = "/stepclear.mp3";
+        audioElement.loop = true;
+        audioElement.volume = 0.7;
+        audioElement.preload = "auto";
 
         // オーディオの読み込み状態を監視
         audioElement.addEventListener("canplaythrough", () => {
-          setAudioLoaded(true)
-          console.log("Audio loaded and ready to play")
-        })
+          setAudioLoaded(true);
+          console.log("Audio loaded and ready to play");
+        });
 
+        // エラーハンドリングを改善
         audioElement.addEventListener("error", (e) => {
-          console.error("Audio loading error:", e)
-        })
+          const error = e.currentTarget as HTMLAudioElement;
+          console.error("Audio loading error details:", {
+            error: error.error,
+            networkState: error.networkState,
+            readyState: error.readyState,
+            src: error.src
+          });
+        });
 
-        setAudio(audioElement)
-
-        return () => {
-          audioElement.pause()
-          audioElement.src = ""
-          setAudio(null)
-        }
+        setAudio(audioElement);
       } catch (error) {
-        console.error("Audio initialization error:", error)
+        console.error("Audio initialization error:", {
+          error,
+          message: error instanceof Error ? error.message : "Unknown error",
+          type: typeof error
+        });
       }
-    }
-  }, [])
+    };
+
+    initAudio();
+
+    return () => {
+      if (audioElement) {
+        try {
+          audioElement.pause();
+          audioElement.src = "";
+          setAudio(null);
+        } catch (error) {
+          console.error("Audio cleanup error:", error);
+        }
+      }
+    };
+  }, []);
 
   // ページ表示後に一度だけ再生を試みる
   useEffect(() => {
-    if (audio && audioLoaded) {
-      // モバイルでは自動再生できないことが多いが、一応試みる
-      const playPromise = audio.play()
+    const playAudio = async () => {
+      if (!audio || !audioLoaded) return;
 
-      if (playPromise !== undefined) {
-        playPromise.catch((error) => {
-          console.log("Initial auto-play was prevented:", error)
-          // エラーは想定内なので何もしない
-        })
+      try {
+        await audio.play();
+        console.log("Audio started playing successfully");
+      } catch (error) {
+        console.log("Initial auto-play was prevented:", {
+          error,
+          message: error instanceof Error ? error.message : "Unknown error"
+        });
       }
-    }
-  }, [audio, audioLoaded])
+    };
+
+    playAudio();
+  }, [audio, audioLoaded]);
 
   // ミュート状態が変更されたときに適用
   useEffect(() => {
-    if (audio) {
-      audio.muted = isMuted
+    const handleMuteChange = async () => {
+      if (!audio) return;
 
-      // ミュート解除時に再生を試みる
-      if (!isMuted && audio.paused && audioLoaded) {
-        const playPromise = audio.play()
+      try {
+        audio.muted = isMuted;
 
-        if (playPromise !== undefined) {
-          playPromise.catch((error) => {
-            console.log("Play on unmute failed:", error)
-          })
+        // ミュート解除時に再生を試みる
+        if (!isMuted && audio.paused && audioLoaded) {
+          await audio.play();
         }
+      } catch (error) {
+        console.log("Audio mute/unmute error:", {
+          error,
+          message: error instanceof Error ? error.message : "Unknown error"
+        });
       }
-    }
-  }, [isMuted, audio, audioLoaded])
+    };
+
+    handleMuteChange();
+  }, [isMuted, audio, audioLoaded]);
 
   // 画面タップで再生を試みる関数
-  const tryPlayAudio = () => {
-    if (audio && audio.paused && !isMuted && audioLoaded) {
-      // ユーザーインタラクションの中で再生を試みる（モバイルで重要）
-      const playPromise = audio.play()
+  const tryPlayAudio = async () => {
+    if (!audio || !audioLoaded || !audio.paused || isMuted) return;
 
-      if (playPromise !== undefined) {
-        playPromise.catch((error) => {
-          console.log("Play on screen tap failed:", error)
-        })
-      }
+    try {
+      await audio.play();
+    } catch (error) {
+      console.log("Play on screen tap failed:", {
+        error,
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
     }
-  }
+  };
 
   // Toggle mute
   const toggleMute = () => {
     setIsMuted(!isMuted)
   }
 
+  // 紙吹雪の初期化（クライアントサイドのみ）
+  useEffect(() => {
+    const items = Array.from({ length: 50 }, () => ({
+      left: `${Math.random() * 100}%`,
+      width: `${5 + Math.random() * 10}px`,
+      height: `${10 + Math.random() * 15}px`,
+      background: `hsl(${Math.random() * 360}, 100%, 50%)`,
+      transform: `rotate(${Math.random() * 360}deg)`,
+      animationDelay: `${Math.random() * 3}s`,
+      animationDuration: `${3 + Math.random() * 5}s`,
+    }));
+    setConfettiItems(items);
+    setShowConfetti(true);
+  }, []);
+
   // Hide confetti after some time
   useEffect(() => {
+    if (!showConfetti) return;
+    
     const timer = setTimeout(() => {
       setShowConfetti(false)
     }, 5000)
 
     return () => clearTimeout(timer)
-  }, [])
+  }, [showConfetti])
 
   return (
     <div className="min-h-screen bg-teal-950 flex flex-col" onClick={tryPlayAudio}>
@@ -144,19 +203,19 @@ export default function Stage11ClearPage() {
       {/* Confetti effect */}
       {showConfetti && (
         <div className="fixed inset-0 pointer-events-none z-10">
-          {[...Array(50)].map((_, i) => (
+          {confettiItems.map((item, i) => (
             <div
               key={i}
               className="absolute animate-confetti"
               style={{
                 top: "-5%",
-                left: `${Math.random() * 100}%`,
-                width: `${5 + Math.random() * 10}px`,
-                height: `${10 + Math.random() * 15}px`,
-                background: `hsl(${Math.random() * 360}, 100%, 50%)`,
-                transform: `rotate(${Math.random() * 360}deg)`,
-                animationDelay: `${Math.random() * 3}s`,
-                animationDuration: `${3 + Math.random() * 5}s`,
+                left: item.left,
+                width: item.width,
+                height: item.height,
+                background: item.background,
+                transform: item.transform,
+                animationDelay: item.animationDelay,
+                animationDuration: item.animationDuration,
               }}
             ></div>
           ))}

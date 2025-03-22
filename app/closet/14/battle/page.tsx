@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Home, Zap, Volume2, VolumeX, Crown, Skull, Flame, Shield, Swords } from "lucide-react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
+import { saveStageComplete } from "@/lib/playfab"
 
 export default function Endroll() {
   const router = useRouter()
@@ -230,16 +231,21 @@ export default function Endroll() {
     }
   }, [])
 
-  // handleCrownReceive関数を修正して、正しいパスに遷移するようにします
-  const handleCrownReceive = () => {
-    // 現在の音楽を停止
-    if (audio) {
-      audio.pause()
-      audio.src = ""
+  // handleCrownReceive関数を修正して、ステージ14のクリアデータを保存し、クリアページに遷移するようにします
+  const handleCrownReceive = async () => {
+    try {
+      // 現在の音楽を停止
+      if (audio) {
+        audio.pause()
+        audio.src = ""
+      }
+      await saveStageComplete(14);
+      console.log("ステージ14クリアデータを保存しました");
+      router.push("/closet/14/clear");
+    } catch (error) {
+      console.error("Error saving completion:", error);
+      alert("保存中にエラーが発生しました。もう一度お試しください。");
     }
-
-    // 正しいパスに修正: /closet/endroll/crown
-    router.push("/closet/14/clear")
   }
 
   const handleBackToHome = () => {
@@ -316,7 +322,7 @@ export default function Endroll() {
               </div>
             </div>
 
-            {/* ボスキャラクタ�� */}
+            {/* ボスキャラクター */}
             <div className="absolute top-1/4 right-1/4 transform translate-x-1/2 -translate-y-1/2">
               <div className="relative">
                 <div className={`text-8xl ${bossHealth === 0 ? "animate-boss-death" : "animate-boss-idle"}`}>👿</div>
