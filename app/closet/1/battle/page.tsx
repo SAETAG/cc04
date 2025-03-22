@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Volume2, VolumeX, ArrowLeft, Home } from "lucide-react"
-import { saveStageRecord } from "@/lib/playfab"
+import { saveStageRecord, updateExperience } from "@/lib/playfab"
 
 export default function Stage1BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
@@ -102,9 +102,12 @@ export default function Stage1BattlePage() {
       // PlayFab へデータ保存処理を呼び出す
       await saveStageRecord({
         stage1_complete: "true",
-        stage1_problem: problemInternalId!, // ここで undefined でないことを保証
+        stage1_problem: problemInternalId!,
         stage1_ideal: idealInternalId!,
       })
+
+      // 経験値を加算（50exp）
+      await updateExperience(50)
 
       // 保存に成功したらクリア画面へ遷移
       router.push("/closet/1/clear")

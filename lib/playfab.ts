@@ -14,6 +14,11 @@ interface PlayFabResult {
     SessionTicket?: string;
     PlayFabId?: string;
     Data?: Record<string, { Value: string }>;
+    Statistics?: Array<{
+      StatisticName: string;
+      Value: number;
+      Version: number;
+    }>;
     [key: string]: any;
   };
 }
@@ -192,6 +197,200 @@ export const getStageComplete = async (stageNumber: number): Promise<boolean> =>
           reject(error?.errorMessage || error || "不明なエラーが発生しました");
         }
       );
+    });
+  });
+};
+
+// 経験値を取得する関数
+export const getExperience = async (): Promise<{
+  total: number;
+  daily: number;
+  weekly: number;
+}> => {
+  return callPlayFabAPI(async () => {
+    return new Promise((resolve, reject) => {
+      const sessionTicket = Cookies.get("token");
+      if (!sessionTicket) {
+        reject(new Error("セッションチケットが見つかりません"));
+        return;
+      }
+
+      PlayFab.settings.sessionTicket = sessionTicket;
+
+      // 全ての統計データを取得
+      PlayFab.PlayFabClient.GetPlayerStatistics(
+        {
+          StatisticNames: ["Experience", "DailyExperience", "WeeklyExperience"]
+        },
+        (result: PlayFabResult) => {
+          console.log("GetPlayerStatistics レスポンス:", result);
+          
+          // 結果がnullまたはundefinedの場合
+          if (!result) {
+            console.warn("GetPlayerStatisticsの結果がnullです");
+            // 統計データが存在しない場合は初期化
+            initializeExperience()
+              .then(() => resolve({ total: 0, daily: 0, weekly: 0 }))
+              .catch(error => {
+                console.error("統計データの初期化に失敗:", error);
+                resolve({ total: 0, daily: 0, weekly: 0 });
+              });
+            return;
+          }
+
+          // 統計データが存在しない場合
+          if (!result.data?.Statistics) {
+            console.warn("統計データが存在しません");
+            // 統計データが存在しない場合は初期化
+            initializeExperience()
+              .then(() => resolve({ total: 0, daily: 0, weekly: 0 }))
+              .catch(error => {
+                console.error("統計データの初期化に失敗:", error);
+                resolve({ total: 0, daily: 0, weekly: 0 });
+              });
+            return;
+          }
+
+          const stats = result.data.Statistics;
+          const experience = {
+            total: stats.find((s: { StatisticName: string; Value: number }) => s.StatisticName === "Experience")?.Value || 0,
+            daily: stats.find((s: { StatisticName: string; Value: number }) => s.StatisticName === "DailyExperience")?.Value || 0,
+            weekly: stats.find((s: { StatisticName: string; Value: number }) => s.StatisticName === "WeeklyExperience")?.Value || 0
+          };
+
+          console.log("取得した経験値:", experience);
+          resolve(experience);
+        },
+        (error: PlayFabError) => {
+          console.error("経験値の取得に失敗:", error);
+          // エラーが発生した場合も0を返す
+          resolve({
+            total: 0,
+            daily: 0,
+            weekly: 0
+          });
+        }
+      );
+    });
+  });
+};
+
+// 経験値を初期化する関数
+const initializeExperience = async (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const sessionTicket = Cookies.get("token");
+    if (!sessionTicket) {
+      reject(new Error("セッションチケットが見つかりません"));
+      return;
+    }
+
+    PlayFab.settings.sessionTicket = sessionTicket;
+
+    PlayFab.PlayFabClient.UpdatePlayerStatistics(
+      {
+        Statistics: [
+          {
+            StatisticName: "Experience",
+            Value: 0
+          },
+          {
+            StatisticName: "DailyExperience",
+            Value: 0
+          },
+          {
+            StatisticName: "WeeklyExperience",
+            Value: 0
+          }
+        ]
+      },
+      (result: PlayFabResult) => {
+        console.log("統計データの初期化成功:", result);
+        resolve();
+      },
+      (error: PlayFabError) => {
+        console.error("統計データの初期化に失敗:", error);
+        reject(error);
+      }
+    );
+  });
+};
+
+// 経験値を更新する関数を改善
+export const updateExperience = async (expAmount: number): Promise<void> => {
+  return callPlayFabAPI(async () => {
+    return new Promise((resolve, reject) => {
+      const sessionTicket = Cookies.get("token");
+      if (!sessionTicket) {
+        reject(new Error("セッションチケットが見つかりません"));
+        return;
+      }
+
+      PlayFab.settings.sessionTicket = sessionTicket;
+
+      // 現在の経験値を取得
+      getExperience()
+        .then(currentExp => {
+          // 新しい経験値を計算
+          const newTotalExp = currentExp.total + expAmount;
+          const newDailyExp = currentExp.daily + expAmount;
+          const newWeeklyExp = currentExp.weekly + expAmount;
+
+          console.log("更新前の経験値:", currentExp);
+          console.log("更新後の経験値:", {
+            total: newTotalExp,
+            daily: newDailyExp,
+            weekly: newWeeklyExp
+          });
+
+          // 経験値を更新
+          PlayFab.PlayFabClient.UpdatePlayerStatistics(
+            {
+              Statistics: [
+                {
+                  StatisticName: "Experience",
+                  Value: newTotalExp
+                },
+                {
+                  StatisticName: "DailyExperience",
+                  Value: newDailyExp
+                },
+                {
+                  StatisticName: "WeeklyExperience",
+                  Value: newWeeklyExp
+                }
+              ]
+            },
+            (updateResult: PlayFabResult) => {
+              console.log("UpdatePlayerStatistics レスポンス:", updateResult);
+              
+              if (!updateResult) {
+                console.error("UpdatePlayerStatisticsの結果がnullです");
+                reject(new Error("経験値の更新に失敗しました"));
+                return;
+              }
+
+              if (!updateResult.data) {
+                console.error("UpdatePlayerStatisticsのデータが存在しません");
+                reject(new Error("経験値の更新に失敗しました"));
+                return;
+              }
+
+              console.log(`経験値を更新しました：
+                累積: ${currentExp.total} → ${newTotalExp} (+${expAmount})
+                日次: ${currentExp.daily} → ${newDailyExp} (+${expAmount})
+                週次: ${currentExp.weekly} → ${newWeeklyExp} (+${expAmount})`);
+              resolve();
+            },
+            (error: PlayFabError) => {
+              console.error("経験値の更新に失敗:", error);
+              reject(error);
+            }
+          );
+        })
+        .catch(error => {
+          console.error("現在の経験値の取得に失敗:", error);
+          reject(error);
+        });
     });
   });
 };
