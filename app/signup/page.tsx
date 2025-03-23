@@ -43,38 +43,47 @@ export default function SignupPage() {
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setError("")
-    setIsLoading(true)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    setSuccess("");
 
     try {
-      const trimmedName = name.trim()
-      if (trimmedName.length < 3 || trimmedName.length > 20) {
-        throw new Error("ユーザー名は3～20文字で入力してください")
-      }
-      const usernameRegex = /^[A-Za-z0-9_]+$/
-      if (!usernameRegex.test(trimmedName)) {
-        throw new Error("ユーザー名は英数字とアンダースコアのみ使用可能です")
-      }
-      if (!email || !password) {
-        throw new Error("すべての項目を入力してください")
-      }
-      if (password.length < 6) {
-        throw new Error("パスワードは6文字以上で入力してください")
+      // メールアドレスのバリデーション
+      if (!email || !email.includes("@")) {
+        setError("有効なメールアドレスを入力してください");
+        setIsLoading(false);
+        return;
       }
 
-      const result = await signUp({ name: trimmedName, email, password })
-      console.log("登録成功:", result)
-      router.push("/prologue")
-    } catch (err: any) {
-      console.error("登録エラー詳細:", JSON.stringify(err, null, 2))
-      setError(typeof err === "string" ? err : err.message || "アカウント登録に失敗しました")
-    } finally {
-      setIsLoading(false)
+      // パスワードのバリデーション
+      if (!password || password.length < 6) {
+        setError("パスワードは6文字以上で入力してください");
+        setIsLoading(false);
+        return;
+      }
+
+      // ユーザー登録
+      const result = await signUp({ name: name.trim(), email, password });
+      console.log("登録成功:", result);
+
+      // 登録成功後、ユーザーに通知
+      setSuccess("登録が完了しました！ログインページからログインしてください。");
+      setIsLoading(false);
+
+      // フォームをリセット
+      setName("");
+      setEmail("");
+      setPassword("");
+    } catch (error) {
+      console.error("登録エラー:", error);
+      setError("登録に失敗しました。もう一度お試しください。");
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-teal-950 p-4 relative overflow-hidden">
@@ -91,6 +100,12 @@ export default function SignupPage() {
         {error && (
           <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm">
             {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-4 p-3 bg-green-900/50 border border-green-700 rounded-lg text-green-200 text-sm">
+            {success}
           </div>
         )}
 

@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Volume2, VolumeX, ArrowLeft, Home } from "lucide-react"
-import { saveStageRecord } from "@/lib/playfab"
+import { saveStageRecord, updateExperience } from "@/lib/playfab"
 
 export default function Stage1BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
@@ -86,7 +86,14 @@ export default function Stage1BattlePage() {
   const saveRecord = async () => {
     setIsSaving(true)
     try {
-      // 定数マッピングで内部IDに変換（例）
+      // 問題と理想の選択チェック
+      if (!problems || !ideals) {
+        alert("問題と理想のクローゼットを選択してください。")
+        setIsSaving(false)
+        return
+      }
+
+      // 定数マッピングで内部IDに変換
       const problemInternalId = {
         "リバウンドラゴン": "rebond_dragon",
         "忘却ゴブリン": "forgotten_goblin",
@@ -99,18 +106,39 @@ export default function Stage1BattlePage() {
         "エターナルクローゼット": "eternal_closet",
       }[ideals]
 
+      if (!problemInternalId || !idealInternalId) {
+        alert("無効な選択です。もう一度選択してください。")
+        setIsSaving(false)
+        return
+      }
+
       // PlayFab へデータ保存処理を呼び出す
       await saveStageRecord({
         stage1_complete: "true",
-        stage1_problem: problemInternalId!, // ここで undefined でないことを保証
-        stage1_ideal: idealInternalId!,
+        stage1_problem: problemInternalId,
+        stage1_ideal: idealInternalId,
       })
+
+      // 経験値を加算（50exp）
+      await updateExperience(50)
 
       // 保存に成功したらクリア画面へ遷移
       router.push("/closet/1/clear")
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving record:", error)
-      alert("保存中にエラーが発生しました。もう一度お試しください。")
+      let errorMessage = "保存中にエラーが発生しました。"
+      
+      if (error?.errorMessage?.includes("must be logged in")) {
+        errorMessage = "セッションが切れました。ページを更新して再度お試しください。"
+      } else if (error?.errorMessage?.includes("Invalid session ticket")) {
+        errorMessage = "セッションが無効です。再度ログインしてください。"
+      } else if (error?.errorMessage?.includes("Not authorized")) {
+        errorMessage = "権限がありません。再度ログインしてください。"
+      } else if (error?.errorMessage?.includes("API call failed")) {
+        errorMessage = "サーバーとの通信に失敗しました。インターネット接続を確認してください。"
+      }
+
+      alert(errorMessage)
     } finally {
       setIsSaving(false)
     }

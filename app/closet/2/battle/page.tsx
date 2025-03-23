@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Volume2, VolumeX, ArrowLeft, Home, CheckCircle2, Trash2, Archive, FolderOutput, Clock } from "lucide-react"
-import { saveStageComplete } from "@/lib/playfab"
+import { saveStageComplete, updateExperience } from "@/lib/playfab"
 
 export default function Stage2BattlePage() {
   const [isMuted, setIsMuted] = useState(false)
@@ -144,8 +144,14 @@ export default function Stage2BattlePage() {
   const handleComplete = async () => {
     try {
       setIsCompleting(true)
+      // ステージクリアデータを保存
       await saveStageComplete(2)
       console.log("ステージ2クリアデータを保存しました")
+
+      // 経験値を加算（50exp）
+      await updateExperience(50)
+      console.log("経験値を50加算しました")
+
       router.push("/closet/2/clear")
     } catch (error) {
       console.error("ステージ2クリアデータの保存に失敗:", error)

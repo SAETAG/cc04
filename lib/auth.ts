@@ -8,7 +8,25 @@ interface PlayFabError {
 }
 
 interface PlayFabResult {
-  data: any;
+  data: {
+    SessionTicket?: string;
+    PlayFabId?: string;
+    Data?: Record<string, { Value: string }>;
+    Statistics?: Array<{
+      StatisticName: string;
+      Value: number;
+      Version: number;
+    }>;
+    [key: string]: any;
+  };
+  error?: {
+    code: number;
+    status: string;
+    error: string;
+    errorCode: number;
+    errorMessage: string;
+    errorDetails?: Record<string, string[]>;
+  };
 }
 
 // サインアップ（ユーザー登録）関数
@@ -48,7 +66,7 @@ export const signUp = async ({
 };
 
 // ログイン関数（Cookie と PlayFab.settings に SessionTicket を保存）
-export const login = async ({ email, password }: { email: string; password: string }): Promise<any> => {
+export const login = async ({ email, password }: { email: string; password: string }): Promise<PlayFabResult> => {
   if (!PlayFab) {
     throw new Error(
       "PlayFab SDK が利用できません。クライアントサイドで実行されていることを確認してください。"
@@ -121,7 +139,7 @@ export const login = async ({ email, password }: { email: string; password: stri
       // リンクに失敗しても、メインのログインは成功とみなす
       return emailLoginResult;
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("ログイン処理中にエラーが発生しました:", error);
     throw new Error(error?.errorMessage || "ログインに失敗しました");
   }
